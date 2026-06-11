@@ -80,4 +80,13 @@ public class RAGConfigProperties {
      */
     @Value("${rag.answer-citation.enabled:true}")
     private Boolean answerCitationEnabled;
+
+    /**
+     * Rerank 重排序功能开关
+     * <p>
+     * 控制是否启用 Rerank 后置处理器对召回结果进行重排序
+     * 默认值：{@code true}
+     */
+    @Value("${rag.rerank.enabled:true}")
+    private Boolean rerankEnabled;
 }

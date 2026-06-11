@@ -18,18 +18,22 @@
 package com.nageoffer.ai.ragent.rag.eval;
 
 import cn.hutool.core.collection.CollUtil;
+import cn.hutool.core.util.IdUtil;
 import cn.hutool.core.util.StrUtil;
+import com.nageoffer.ai.ragent.framework.context.UserContext;
 import com.nageoffer.ai.ragent.framework.convention.ChatMessage;
 import com.nageoffer.ai.ragent.framework.convention.ChatRequest;
 import com.nageoffer.ai.ragent.framework.convention.RetrievedChunk;
 import com.nageoffer.ai.ragent.framework.trace.RagTraceContext;
-import com.nageoffer.ai.ragent.framework.trace.RagTraceRoot;
 import com.nageoffer.ai.ragent.infra.chat.LLMService;
 import com.nageoffer.ai.ragent.knowledge.dao.entity.KnowledgeChunkDO;
 import com.nageoffer.ai.ragent.knowledge.dao.entity.KnowledgeDocumentDO;
 import com.nageoffer.ai.ragent.knowledge.dao.mapper.KnowledgeChunkMapper;
 import com.nageoffer.ai.ragent.knowledge.dao.mapper.KnowledgeDocumentMapper;
+import com.nageoffer.ai.ragent.rag.config.RagTraceProperties;
 import com.nageoffer.ai.ragent.rag.config.SearchChannelProperties;
+import com.nageoffer.ai.ragent.rag.dao.entity.RagTraceRunDO;
+import com.nageoffer.ai.ragent.rag.service.RagTraceRecordService;
 import com.nageoffer.ai.ragent.rag.core.prompt.PromptContext;
 import com.nageoffer.ai.ragent.rag.core.prompt.RAGPromptService;
 import com.nageoffer.ai.ragent.rag.core.intent.IntentResolver;
@@ -46,6 +50,7 @@ import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Date;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
@@ -59,6 +64,11 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class EvalRagRunner {
 
+    private static final String TRACE_NAME = "eval-rag-run";
+    private static final String STATUS_RUNNING = "RUNNING";
+    private static final String STATUS_SUCCESS = "SUCCESS";
+    private static final String STATUS_ERROR = "ERROR";
+
     private final QueryRewriteService queryRewriteService;
     private final IntentResolver intentResolver;
     private final RetrievalEngine retrievalEngine;
@@ -67,9 +77,39 @@ public class EvalRagRunner {
     private final SearchChannelProperties searchProperties;
     private final KnowledgeChunkMapper knowledgeChunkMapper;
     private final KnowledgeDocumentMapper knowledgeDocumentMapper;
+    private final RagTraceProperties traceProperties;
+    private final RagTraceRecordService traceRecordService;
 
-    @RagTraceRoot(name = "eval-rag-run", conversationIdArg = "", taskIdArg = "")
     public EvalSnapshot run(String question) {
+        if (!traceProperties.isEnabled() || StrUtil.isNotBlank(RagTraceContext.getTraceId())) {
+            return doRun(question);
+        }
+
+        String traceId = IdUtil.getSnowflakeNextIdStr();
+        long startMillis = System.currentTimeMillis();
+        traceRecordService.startRun(RagTraceRunDO.builder()
+                .traceId(traceId)
+                .traceName(TRACE_NAME)
+                .entryMethod(EvalRagRunner.class.getName() + "#run")
+                .userId(UserContext.getUserId())
+                .status(STATUS_RUNNING)
+                .startTime(new Date(startMillis))
+                .build());
+
+        RagTraceContext.setTraceId(traceId);
+        try {
+            EvalSnapshot snapshot = doRun(question);
+            traceRecordService.finishRun(traceId, STATUS_SUCCESS, null, new Date(), System.currentTimeMillis() - startMillis);
+            return snapshot;
+        } catch (RuntimeException | Error ex) {
+            traceRecordService.finishRun(traceId, STATUS_ERROR, truncateError(ex), new Date(), System.currentTimeMillis() - startMillis);
+            throw ex;
+        } finally {
+            RagTraceContext.clear();
+        }
+    }
+
+    private EvalSnapshot doRun(String question) {
         long start = System.currentTimeMillis();
 
         RewriteResult rewriteResult = queryRewriteService.rewriteWithSplit(question, List.of());
@@ -78,6 +118,15 @@ public class EvalRagRunner {
         String answer = generateAnswer(rewriteResult, retrievalContext, subIntents);
 
         return buildSnapshot(question, rewriteResult, retrievalContext, subIntents, answer, System.currentTimeMillis() - start);
+    }
+
+    private String truncateError(Throwable throwable) {
+        if (throwable == null) {
+            return null;
+        }
+        String message = throwable.getClass().getSimpleName() + ": " + StrUtil.blankToDefault(throwable.getMessage(), "");
+        int max = traceProperties.getMaxErrorLength();
+        return message.length() <= max ? message : message.substring(0, max);
     }
 
     private EvalSnapshot buildSnapshot(String question,

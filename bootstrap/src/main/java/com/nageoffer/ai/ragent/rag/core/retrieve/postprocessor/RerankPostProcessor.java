@@ -19,6 +19,7 @@ package com.nageoffer.ai.ragent.rag.core.retrieve.postprocessor;
 
 import com.nageoffer.ai.ragent.framework.convention.RetrievedChunk;
 import com.nageoffer.ai.ragent.infra.rerank.RerankService;
+import com.nageoffer.ai.ragent.rag.config.RAGConfigProperties;
 import com.nageoffer.ai.ragent.rag.config.SearchChannelProperties;
 import com.nageoffer.ai.ragent.rag.core.retrieve.channel.SearchChannelResult;
 import com.nageoffer.ai.ragent.rag.core.retrieve.channel.SearchContext;
@@ -41,6 +42,7 @@ public class RerankPostProcessor implements SearchResultPostProcessor {
 
     private final RerankService rerankService;
     private final SearchChannelProperties properties;
+    private final RAGConfigProperties ragConfigProperties;
 
     @Override
     public String getName() {
@@ -54,7 +56,7 @@ public class RerankPostProcessor implements SearchResultPostProcessor {
 
     @Override
     public boolean isEnabled(SearchContext context) {
-        return true;  // 始终启用
+        return ragConfigProperties.getRerankEnabled();
     }
 
     @Override

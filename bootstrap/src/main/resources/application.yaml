@@ -81,6 +81,9 @@ rag:
   answer-citation:
     enabled: true
 
+  rerank:
+    enabled: true
+
   rate-limit:
     global:
       enabled: true
