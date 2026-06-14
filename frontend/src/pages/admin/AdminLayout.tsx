@@ -315,7 +315,9 @@ export function AdminLayout() {
     }
 
     if (section === "knowledge" && segments.length > 2) {
-      items.push({ label: "文档管理" });
+      const kbId = segments[2];
+      const onChunksPage = segments.includes("docs");
+      items.push({ label: "文档管理", to: onChunksPage ? `/admin/knowledge/${kbId}` : undefined });
     }
 
     if (section === "knowledge" && segments.includes("docs")) {

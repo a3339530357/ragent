@@ -185,9 +185,13 @@ mcp/
 - `rag.memory.history-keep-turns` / `summary-start-turns` / `summary-enabled` 控制会话记忆窗口与摘要触发
 - `rag.search.channels.{vector-global|intent-directed}` 调每个通道的置信度阈值与 top-k 倍率
 - `rag.semaphore.document-upload` 限制文档上传并发
+- `rag.pdf.ocr-strategy`（`NO_OCR` / `AUTO` / `OCR_ONLY`，默认 `AUTO`）+ `rag.pdf.ocr.languages`（默认 `chi_sim+eng`）控制扫描件 PDF 的 OCR
 - `rag.knowledge.schedule.*` 定时增量刷新参数（DB 乐观锁 + 锁续期）
 - `rag.mcp.servers` 注册 MCP Server 列表（默认指向 `http://localhost:9099`）
 - `rag.trace.enabled` 关闭可在性能测试时绕过 AOP
+- `HttpClientConfig`（`rag/config/`）有两个 OkHttpClient：`streamingHttpClient`(@Primary，read/call 超时=0，SSE 用) 与 `syncHttpClient`(read 30s / call 45s)。**重型同步 LLM 调用（如 config-bootstrap 的大 prompt）会撞 30s readTimeout**，需单独长超时客户端而非全局调大（避免影响 rerank/embedding）
+
+> ⚠️ **PDF OCR 依赖宿主机安装 Tesseract**：`ocr-strategy=AUTO`/`OCR_ONLY` 遇图片型扫描件会调 Tesseract，未装时抛 `couldn't find an OCR parser to handle image/ocr-png` 并整篇入库失败。需 `apt install tesseract-ocr tesseract-ocr-chi-sim tesseract-ocr-eng`，装后**须重启后端**（Tika 会缓存探测结果）。
 
 环境变量：`BAILIAN_API_KEY`（百炼）、`SILICONFLOW_API_KEY`（SiliconFlow）、`NEWAPI_API_KEY`（NewAPI）。MoYu 默认硬编码 key（仅演示）。
 
@@ -266,7 +270,7 @@ mcp/
 - `pg` — `PgVectorStoreService` + `PgVectorStoreAdmin`（基于 PostgreSQL + pgvector 扩展，**默认**）
 - `milvus` — `MilvusVectorStoreService` + `MilvusVectorStoreAdmin`
 
-统一接口：`VectorStoreService`（检索）、`VectorStoreAdmin`（Collection 创建/删除/索引管理）。`VectorSpaceId` + `VectorSpaceSpec` 封装集合命名与维度/度量类型。默认集合 `rag_default_store`，维度 `1024`，度量 `COSINE`（见 `rag.default.*`）。
+统一接口：`VectorStoreService`（检索）、`VectorStoreAdmin`（Collection 创建/删除/索引管理）。`VectorSpaceId` + `VectorSpaceSpec` 封装集合命名与维度/度量类型。默认集合 `rag_default_store`，维度 `1024`，度量 `COSINE`（见 `rag.default.*`）。注意 `schema_pg.sql` 里静态表 `t_knowledge_vector` 的 `vector(1536)` 是模板/历史遗留，**实际向量集合由 `PgVectorStoreAdmin` 按 KB embedding 维度动态建表**（bge-m3 = 1024），排查向量问题时勿被 1536 误导。
 
 ### 基础框架（`framework/`）
 

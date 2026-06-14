@@ -47,3 +47,7 @@ node_modules/
 dist/
 .vite/
 .env.local
+/markdown文件/
+
+### Claude ###
+.claude.local.md

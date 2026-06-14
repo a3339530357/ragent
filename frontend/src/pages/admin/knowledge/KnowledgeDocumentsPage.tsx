@@ -63,6 +63,18 @@ const PROCESS_MODE_OPTIONS = [
 
 const NO_CHUNK_VALUE = -1;
 
+// 后端可解析的文件扩展名白名单（文件夹选择时用于过滤无关文件）
+const SUPPORTED_FILE_EXTENSIONS = new Set([
+  "md", "markdown", "txt", "pdf", "doc", "docx", "xls", "xlsx", "ppt", "pptx",
+  "html", "htm", "xml", "csv", "rtf", "odt", "ods", "odp", "epub"
+]);
+
+const getFileExtension = (name: string): string => {
+  const dot = name.lastIndexOf(".");
+  if (dot < 0 || dot === name.length - 1) return "";
+  return name.slice(dot + 1).toLowerCase();
+};
+
 const parseChunkConfig = (raw?: string | null): Record<string, unknown> => {
   if (!raw) return {};
   try {
@@ -329,10 +341,12 @@ export function KnowledgeDocumentsPage() {
 
   useEffect(() => {
     loadKnowledgeBase();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [kbId]);
 
   useEffect(() => {
     loadDocuments();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [kbId, current, pageSize, statusFilter, keyword]);
 
   useEffect(() => {
@@ -872,10 +886,8 @@ export function KnowledgeDocumentsPage() {
       <UploadDialog
         open={uploadOpen}
         onOpenChange={setUploadOpen}
-        onSubmit={async (payload) => {
-          if (!kbId) return;
-          await uploadDocument(kbId, payload);
-          toast.success("上传成功");
+        kbId={kbId}
+        onUploaded={async () => {
           setUploadOpen(false);
           setCurrent(1);
           await loadDocuments(1, statusFilter, keyword);
@@ -1322,7 +1334,8 @@ export function KnowledgeDocumentsPage() {
 interface UploadDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onSubmit: (payload: KnowledgeDocumentUploadPayload) => Promise<void>;
+  kbId?: string;
+  onUploaded: () => Promise<void> | void;
 }
 
 const uploadSchema = z
@@ -1407,17 +1420,78 @@ const uploadSchema = z
 
 type UploadFormValues = z.infer<typeof uploadSchema>;
 
-function UploadDialog({ open, onOpenChange, onSubmit }: UploadDialogProps) {
-  const [file, setFile] = useState<File | null>(null);
+function UploadDialog({ open, onOpenChange, kbId, onUploaded }: UploadDialogProps) {
+  const [files, setFiles] = useState<File[]>([]);
   const [isDragging, setIsDragging] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const folderInputRef = useRef<HTMLInputElement>(null);
   const [saving, setSaving] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState<{ done: number; total: number } | null>(null);
   const [chunkStrategies, setChunkStrategies] = useState<ChunkStrategyOption[]>([]);
   const [noChunk, setNoChunk] = useState(false);
   const [originalChunkSize, setOriginalChunkSize] = useState("512");
   const [pipelines, setPipelines] = useState<IngestionPipeline[]>([]);
   const [loadingPipelines, setLoadingPipelines] = useState(false);
   const [maxFileSize, setMaxFileSize] = useState<number>(50 * 1024 * 1024);
+
+  // 去重合并新选中的文件（按 name+size+lastModified 去重，避免重复添加）
+  const mergeFiles = (incoming: File[]) => {
+    if (incoming.length === 0) return;
+    setFiles((prev) => {
+      const seen = new Set(prev.map((f) => `${f.name}__${f.size}__${f.lastModified}`));
+      const merged = [...prev];
+      for (const f of incoming) {
+        const key = `${f.name}__${f.size}__${f.lastModified}`;
+        if (!seen.has(key)) {
+          seen.add(key);
+          merged.push(f);
+        }
+      }
+      return merged;
+    });
+  };
+
+  // 过滤垃圾文件：跳过 0 字节空文件；文件夹选择时按扩展名白名单过滤；返回有效文件并提示忽略数
+  const filterFiles = (list: File[], applyExtensionWhitelist: boolean): File[] => {
+    let ignoredEmpty = 0;
+    let ignoredUnsupported = 0;
+    const valid: File[] = [];
+    for (const f of list) {
+      if (f.size === 0) {
+        ignoredEmpty++;
+        continue;
+      }
+      if (applyExtensionWhitelist && !SUPPORTED_FILE_EXTENSIONS.has(getFileExtension(f.name))) {
+        ignoredUnsupported++;
+        continue;
+      }
+      valid.push(f);
+    }
+    const ignored = ignoredEmpty + ignoredUnsupported;
+    if (ignored > 0) {
+      const parts: string[] = [];
+      if (ignoredUnsupported > 0) parts.push(`${ignoredUnsupported} 个不支持`);
+      if (ignoredEmpty > 0) parts.push(`${ignoredEmpty} 个空`);
+      toast.warning(`已忽略 ${parts.join("、")}文件`);
+    }
+    return valid;
+  };
+
+  const handlePickFiles = (fileList: FileList | null, fromFolder: boolean) => {
+    if (!fileList || fileList.length === 0) return;
+    const valid = filterFiles(Array.from(fileList), fromFolder);
+    mergeFiles(valid);
+  };
+
+  const removeFileAt = (index: number) => {
+    setFiles((prev) => prev.filter((_, i) => i !== index));
+  };
+
+  const clearFiles = () => {
+    setFiles([]);
+    if (fileInputRef.current) fileInputRef.current.value = "";
+    if (folderInputRef.current) folderInputRef.current.value = "";
+  };
 
   const form = useForm<UploadFormValues>({
     resolver: zodResolver(uploadSchema),
@@ -1463,7 +1537,10 @@ function UploadDialog({ open, onOpenChange, onSubmit }: UploadDialogProps) {
 
   useEffect(() => {
     if (open) {
-      setFile(null);
+      setFiles([]);
+      setUploadProgress(null);
+      if (fileInputRef.current) fileInputRef.current.value = "";
+      if (folderInputRef.current) folderInputRef.current.value = "";
       form.reset({
         sourceType: "file",
         sourceLocation: "",
@@ -1491,7 +1568,7 @@ function UploadDialog({ open, onOpenChange, onSubmit }: UploadDialogProps) {
 
   useEffect(() => {
     if (isUrlSource) {
-      setFile(null);
+      setFiles([]);
     }
   }, [isUrlSource]);
 
@@ -1546,17 +1623,21 @@ function UploadDialog({ open, onOpenChange, onSubmit }: UploadDialogProps) {
   };
 
   const handleSubmit = async (values: UploadFormValues) => {
-    if (values.sourceType === "file" && !file) {
+    if (!kbId) return;
+    if (values.sourceType === "file" && files.length === 0) {
       toast.error("请选择文件");
       return;
     }
-    if (values.sourceType === "file" && file && file.size > maxFileSize) {
-      const sizeMB = Math.floor(maxFileSize / 1024 / 1024);
-      toast.error(`上传文件大小超过限制，最大允许 ${sizeMB}MB`);
-      return;
+    if (values.sourceType === "file") {
+      const oversized = files.filter((f) => f.size > maxFileSize);
+      if (oversized.length > 0) {
+        const sizeMB = Math.floor(maxFileSize / 1024 / 1024);
+        toast.error(`有 ${oversized.length} 个文件超过大小限制（最大 ${sizeMB}MB），请移除后重试`);
+        return;
+      }
     }
 
-    // 根据当前策略的 defaultConfig keys 从表单值组装 chunkConfig JSON
+    // 根据当前策略的 defaultConfig keys 从表单值组装 chunkConfig JSON（整批共用同一份配置）
     let chunkConfig: string | undefined;
     if (values.processMode === "chunk") {
       const strategy = chunkStrategies.find((s) => s.value === values.chunkStrategy);
@@ -1580,28 +1661,67 @@ function UploadDialog({ open, onOpenChange, onSubmit }: UploadDialogProps) {
       }
     }
 
+    const buildPayload = (file: File | null): KnowledgeDocumentUploadPayload => ({
+      sourceType: values.sourceType,
+      file: values.sourceType === "file" ? file : null,
+      sourceLocation: values.sourceType === "url" ? values.sourceLocation.trim() : null,
+      scheduleEnabled: values.sourceType === "url" ? values.scheduleEnabled : false,
+      scheduleCron:
+        values.sourceType === "url" && values.scheduleEnabled
+          ? values.scheduleCron.trim()
+          : null,
+      processMode: values.processMode,
+      chunkStrategy: values.processMode === "chunk" ? values.chunkStrategy : undefined,
+      chunkConfig: chunkConfig ?? null,
+      pipelineId: values.processMode === "pipeline" ? values.pipelineId : null
+    });
+
     setSaving(true);
     try {
-      const payload: KnowledgeDocumentUploadPayload = {
-        sourceType: values.sourceType,
-        file: values.sourceType === "file" ? file : null,
-        sourceLocation: values.sourceType === "url" ? values.sourceLocation.trim() : null,
-        scheduleEnabled: values.sourceType === "url" ? values.scheduleEnabled : false,
-        scheduleCron:
-          values.sourceType === "url" && values.scheduleEnabled
-            ? values.scheduleCron.trim()
-            : null,
-        processMode: values.processMode,
-        chunkStrategy: values.processMode === "chunk" ? values.chunkStrategy : undefined,
-        chunkConfig: chunkConfig ?? null,
-        pipelineId: values.processMode === "pipeline" ? values.pipelineId : null
-      };
-      await onSubmit(payload);
+      // URL 来源：保持原有单条上传逻辑
+      if (values.sourceType === "url") {
+        await uploadDocument(kbId, buildPayload(null));
+        toast.success("上传成功");
+        await onUploaded();
+        return;
+      }
+
+      // 本地文件来源：串行逐个上传，单个失败不中断整批
+      const total = files.length;
+      const failed: string[] = [];
+      let success = 0;
+      setUploadProgress({ done: 0, total });
+      for (let i = 0; i < files.length; i++) {
+        const current = files[i];
+        try {
+          await uploadDocument(kbId, buildPayload(current));
+          success++;
+        } catch (error) {
+          failed.push(current.name);
+          console.error(`上传失败: ${current.name}`, error);
+        } finally {
+          setUploadProgress({ done: i + 1, total });
+        }
+      }
+
+      if (failed.length === 0) {
+        toast.success(`上传成功，共 ${success} 个文件`);
+      } else if (success === 0) {
+        toast.error(`全部 ${failed.length} 个文件上传失败：${failed.slice(0, 5).join("、")}${failed.length > 5 ? " 等" : ""}`);
+      } else {
+        toast.warning(`成功 ${success} 个，失败 ${failed.length} 个：${failed.slice(0, 5).join("、")}${failed.length > 5 ? " 等" : ""}`);
+      }
+
+      // 只要有任意成功就刷新列表；全部失败则保留弹窗以便重试
+      if (success > 0) {
+        await onUploaded();
+      }
     } catch (error) {
       toast.error(getErrorMessage(error, "上传失败"));
       console.error(error);
     } finally {
       setSaving(false);
+      setUploadProgress(null);
     }
   };
 
@@ -1665,51 +1785,112 @@ function UploadDialog({ open, onOpenChange, onSubmit }: UploadDialogProps) {
               <FormItem>
                 <FormLabel>本地文件</FormLabel>
                 <FormControl>
-                  <div
-                    className={cn(
-                      "flex flex-col items-center justify-center gap-2 rounded-lg border-2 border-dashed p-6 cursor-pointer transition-colors select-none",
-                      isDragging ? "border-primary bg-primary/5" : "border-muted-foreground/25 hover:border-primary/50 hover:bg-muted/50",
-                      file && !isDragging && "border-primary/40 bg-muted/30"
-                    )}
-                    onClick={() => fileInputRef.current?.click()}
-                    onDragOver={(e) => { e.preventDefault(); setIsDragging(true); }}
-                    onDragLeave={(e) => { if (!e.currentTarget.contains(e.relatedTarget as Node)) setIsDragging(false); }}
-                    onDrop={(e) => {
-                      e.preventDefault();
-                      setIsDragging(false);
-                      const dropped = e.dataTransfer.files[0];
-                      if (dropped) setFile(dropped);
-                    }}
-                  >
-                    <input
-                      ref={fileInputRef}
-                      type="file"
-                      className="hidden"
-                      onChange={(e) => setFile(e.target.files?.[0] || null)}
-                    />
-                    {file ? (
-                      <>
-                        <FileUp className="h-7 w-7 text-primary" />
-                        <div className="text-sm font-medium text-center break-all px-2">{file.name}</div>
-                        <div className="text-xs text-muted-foreground">{formatSize(file.size)}</div>
+                  <div className="space-y-3">
+                    <div
+                      className={cn(
+                        "flex flex-col items-center justify-center gap-2 rounded-lg border-2 border-dashed p-6 transition-colors select-none",
+                        isDragging
+                          ? "border-primary bg-primary/5"
+                          : "border-muted-foreground/25 hover:border-primary/50 hover:bg-muted/50",
+                        files.length > 0 && !isDragging && "border-primary/40 bg-muted/30"
+                      )}
+                      onDragOver={(e) => { e.preventDefault(); setIsDragging(true); }}
+                      onDragLeave={(e) => { if (!e.currentTarget.contains(e.relatedTarget as Node)) setIsDragging(false); }}
+                      onDrop={(e) => {
+                        e.preventDefault();
+                        setIsDragging(false);
+                        // 拖入的全部文件都收下；拖拽不应用文件夹扩展名白名单（仅过滤空文件）
+                        handlePickFiles(e.dataTransfer.files, false);
+                      }}
+                    >
+                      {/* 多选文件：multiple */}
+                      <input
+                        ref={fileInputRef}
+                        type="file"
+                        multiple
+                        className="hidden"
+                        onChange={(e) => {
+                          handlePickFiles(e.target.files, false);
+                          e.target.value = "";
+                        }}
+                      />
+                      {/* 选择文件夹：webkitdirectory（强制只能选文件夹，需独立 input） */}
+                      <input
+                        ref={folderInputRef}
+                        type="file"
+                        className="hidden"
+                        // @ts-expect-error 非标准属性 webkitdirectory，React 类型未声明
+                        webkitdirectory=""
+                        onChange={(e) => {
+                          handlePickFiles(e.target.files, true);
+                          e.target.value = "";
+                        }}
+                      />
+                      <FileUp className="h-7 w-7 text-muted-foreground" />
+                      <div className="text-sm font-medium">拖拽文件到此处，或选择文件 / 文件夹</div>
+                      <div className="text-xs text-muted-foreground">支持 PDF、Markdown、Word、TXT 等格式</div>
+                      <div className="mt-1 flex items-center gap-2">
                         <Button
                           type="button"
-                          variant="ghost"
+                          variant="outline"
                           size="sm"
-                          className="h-7 px-2 text-xs text-muted-foreground hover:text-foreground"
-                          onClick={(e) => { e.stopPropagation(); setFile(null); if (fileInputRef.current) fileInputRef.current.value = ""; }}
+                          onClick={() => fileInputRef.current?.click()}
                         >
-                          <X className="h-3 w-3 mr-1" />
-                          重新选择
+                          选择文件
                         </Button>
-                      </>
-                    ) : (
-                      <>
-                        <FileUp className="h-7 w-7 text-muted-foreground" />
-                        <div className="text-sm font-medium">拖拽文件到此处，或点击选择</div>
-                        <div className="text-xs text-muted-foreground">支持 PDF、Markdown、Word、TXT 等格式</div>
-                      </>
-                    )}
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() => folderInputRef.current?.click()}
+                        >
+                          选择文件夹
+                        </Button>
+                      </div>
+                    </div>
+
+                    {files.length > 0 ? (
+                      <div className="rounded-lg border">
+                        <div className="flex items-center justify-between border-b px-3 py-2">
+                          <span className="text-xs font-medium text-muted-foreground">
+                            已选 {files.length} 个文件
+                          </span>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            className="h-7 px-2 text-xs text-muted-foreground hover:text-foreground"
+                            onClick={clearFiles}
+                            disabled={saving}
+                          >
+                            清空
+                          </Button>
+                        </div>
+                        <div className="max-h-48 overflow-y-auto sidebar-scroll">
+                          {files.map((f, index) => (
+                            <div
+                              key={`${f.name}__${f.size}__${f.lastModified}__${index}`}
+                              className="flex items-center gap-2 px-3 py-1.5 text-sm hover:bg-muted/50"
+                            >
+                              <FileText className="h-4 w-4 shrink-0 text-slate-400" />
+                              <span className="min-w-0 flex-1 truncate" title={f.name}>{f.name}</span>
+                              <span className="shrink-0 text-xs text-muted-foreground tabular-nums">
+                                {formatSize(f.size)}
+                              </span>
+                              <button
+                                type="button"
+                                className="shrink-0 rounded p-1 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground disabled:opacity-50"
+                                onClick={() => removeFileAt(index)}
+                                disabled={saving}
+                                aria-label={`移除 ${f.name}`}
+                              >
+                                <X className="h-3.5 w-3.5" />
+                              </button>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    ) : null}
                   </div>
                 </FormControl>
               </FormItem>
@@ -1959,7 +2140,13 @@ function UploadDialog({ open, onOpenChange, onSubmit }: UploadDialogProps) {
                 取消
               </Button>
               <Button type="submit" disabled={saving}>
-                {saving ? "上传中..." : "上传"}
+                {saving
+                  ? uploadProgress
+                    ? `正在上传 ${uploadProgress.done}/${uploadProgress.total}…`
+                    : "上传中..."
+                  : !isUrlSource && files.length > 1
+                    ? `上传 ${files.length} 个文件`
+                    : "上传"}
               </Button>
             </DialogFooter>
           </form>
