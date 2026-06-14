@@ -163,6 +163,9 @@ rag:
         vector-global: 1.0
     rerank:
       min-score: 0.2
+    lost-in-the-middle:
+      enabled: true
+      min-chunks: 4
 
   trace:
     enabled: true

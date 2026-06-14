@@ -61,7 +61,7 @@ import java.util.stream.Collectors;
  * <ul>
  *   <li>通过 Spring 自动注入所有 {@link SearchResultPostProcessor} 实现</li>
  *   <li>按 {@link SearchResultPostProcessor#getOrder()} 排序后依次执行</li>
- *   <li>典型处理器链：DeduplicationPostProcessor(order=1, 按通道优先级去重) → RerankPostProcessor(order=10, 语义重排)</li>
+ *   <li>典型处理器链：DeduplicationPostProcessor(order=1, 按通道优先级去重) → RrfFusionPostProcessor(order=5, 多通道融合) → RerankPostProcessor(order=10, 语义重排) → LostInTheMiddlePostProcessor(order=20, 位置重排)</li>
  *   <li>单个处理器异常时跳过该处理器，继续执行后续处理器（容错设计）</li>
  * </ul>
  *

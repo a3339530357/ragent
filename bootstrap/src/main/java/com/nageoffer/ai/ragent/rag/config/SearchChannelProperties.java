@@ -58,6 +58,11 @@ public class SearchChannelProperties {
      */
     private Rerank rerank = new Rerank();
 
+    /**
+     * Lost in the Middle 位置重排配置
+     */
+    private LostInTheMiddle lostInTheMiddle = new LostInTheMiddle();
+
     @Data
     public static class Channels {
 
@@ -250,5 +255,24 @@ public class SearchChannelProperties {
          * 低于该分数的 Chunk 会被丢弃；<= 0 表示不启用过滤
          */
         private double minScore = 0.2;
+    }
+
+    @Data
+    public static class LostInTheMiddle {
+
+        /**
+         * 是否启用 Lost in the Middle 位置重排。
+         * <p>
+         * LLM 对长上下文「中间段」的注意力较弱（Liu et al. 2023），将最相关的片段
+         * 交替排在头/尾、最不相关的片段放中间，可在零模型成本下缓解该问题。
+         */
+        private boolean enabled = true;
+
+        /**
+         * 触发重排的最小 Chunk 数量。
+         * <p>
+         * 候选片段过少时不存在「中间被忽略」的问题，低于该阈值直接保留原相关性顺序。
+         */
+        private int minChunks = 4;
     }
 }
