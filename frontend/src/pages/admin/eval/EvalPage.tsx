@@ -1,15 +1,20 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { Link } from "react-router-dom";
 import {
   BarChart3,
+  Code2,
   Eye,
+  FileText,
   FileQuestion,
   Pencil,
   Play,
   Plus,
   RefreshCw,
   Search,
-  Trash2
+  Target,
+  Trash2,
+  Wrench,
+  X
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -68,18 +73,44 @@ const defaultGroundTruth = `{
   "forbiddenClaims": []
 }`;
 
+type GroundTruthTool = {
+  name: string;
+  argsText: string;
+};
+
+type GroundTruthForm = {
+  referenceDocIds: string[];
+  expectedIntentLeafIds: string[];
+  requiredFacts: string[];
+  forbiddenClaims: string[];
+  expectedTool: GroundTruthTool;
+  expectedAnswer: string;
+};
+
+const createEmptyGroundTruthForm = (): GroundTruthForm => ({
+  referenceDocIds: [],
+  expectedIntentLeafIds: [],
+  requiredFacts: [],
+  forbiddenClaims: [],
+  expectedTool: {
+    name: "",
+    argsText: ""
+  },
+  expectedAnswer: ""
+});
+
 const emptySuiteForm = {
   name: "",
   description: "",
   version: "v1"
 };
 
-const emptyCaseForm = {
+const createEmptyCaseForm = () => ({
   question: "",
   category: "",
-  groundTruth: defaultGroundTruth,
+  groundTruth: createEmptyGroundTruthForm(),
   enabled: 1
-};
+});
 
 type SuiteDialogState = {
   open: boolean;
@@ -91,6 +122,104 @@ type CaseDialogState = {
   open: boolean;
   mode: "create" | "edit";
   item: EvalCase | null;
+};
+
+const asStringArray = (value: unknown) => {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+  return value
+    .map((item) => String(item ?? "").trim())
+    .filter(Boolean);
+};
+
+const parseGroundTruth = (raw?: string | null): GroundTruthForm => {
+  if (!raw?.trim()) {
+    return createEmptyGroundTruthForm();
+  }
+  try {
+    const parsed = JSON.parse(raw) as Record<string, unknown>;
+    const expectedTool = parsed.expectedTool && typeof parsed.expectedTool === "object"
+      ? parsed.expectedTool as Record<string, unknown>
+      : null;
+    const args = expectedTool?.args;
+    return {
+      referenceDocIds: asStringArray(parsed.referenceDocIds),
+      expectedIntentLeafIds: asStringArray(parsed.expectedIntentLeafIds),
+      requiredFacts: asStringArray(parsed.requiredFacts),
+      forbiddenClaims: asStringArray(parsed.forbiddenClaims),
+      expectedTool: {
+        name: String(expectedTool?.name ?? "").trim(),
+        argsText: args && typeof args === "object" ? JSON.stringify(args, null, 2) : ""
+      },
+      expectedAnswer: String(parsed.expectedAnswer ?? "").trim()
+    };
+  } catch {
+    return createEmptyGroundTruthForm();
+  }
+};
+
+const parseJsonObject = (raw: string) => {
+  const value = raw.trim();
+  if (!value) {
+    return undefined;
+  }
+  const parsed = JSON.parse(value) as unknown;
+  if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
+    throw new Error("工具参数必须是 JSON 对象");
+  }
+  return parsed as Record<string, unknown>;
+};
+
+const buildGroundTruthPayload = (form: GroundTruthForm) => {
+  const payload: Record<string, unknown> = {};
+  if (form.referenceDocIds.length > 0) {
+    payload.referenceDocIds = form.referenceDocIds;
+  }
+  if (form.expectedIntentLeafIds.length > 0) {
+    payload.expectedIntentLeafIds = form.expectedIntentLeafIds;
+  }
+  if (form.requiredFacts.length > 0) {
+    payload.requiredFacts = form.requiredFacts;
+  }
+  if (form.forbiddenClaims.length > 0) {
+    payload.forbiddenClaims = form.forbiddenClaims;
+  }
+  const toolName = form.expectedTool.name.trim();
+  if (toolName) {
+    const expectedTool: Record<string, unknown> = { name: toolName };
+    const args = parseJsonObject(form.expectedTool.argsText);
+    if (args) {
+      expectedTool.args = args;
+    }
+    payload.expectedTool = expectedTool;
+  }
+  const expectedAnswer = form.expectedAnswer.trim();
+  if (expectedAnswer) {
+    payload.expectedAnswer = expectedAnswer;
+  }
+  return payload;
+};
+
+const serializeGroundTruth = (form: GroundTruthForm) => {
+  const payload = buildGroundTruthPayload(form);
+  if (Object.keys(payload).length === 0) {
+    return "";
+  }
+  return JSON.stringify(payload, null, 2);
+};
+
+const groundTruthSummary = (raw?: string | null) => {
+  const form = parseGroundTruth(raw);
+  const items = [
+    form.referenceDocIds.length ? `文档 ${form.referenceDocIds.length}` : "",
+    form.expectedIntentLeafIds.length ? `意图 ${form.expectedIntentLeafIds.length}` : "",
+    form.requiredFacts.length ? `事实 ${form.requiredFacts.length}` : "",
+    form.forbiddenClaims.length ? `禁用 ${form.forbiddenClaims.length}` : "",
+    form.expectedTool.name ? "工具" : "",
+    form.expectedAnswer ? "参考答案" : ""
+  ].filter(Boolean);
+  return items.length > 0 ? items.join(" / ") : "未配置";
 };
 
 const formatPercent = (value?: number | null) => {
@@ -125,6 +254,184 @@ const statusBadge = (status?: string | null) => {
   return <Badge variant="secondary">{status || "-"}</Badge>;
 };
 
+type StringListEditorProps = {
+  icon: ReactNode;
+  label: string;
+  metric: string;
+  placeholder: string;
+  values: string[];
+  onChange: (values: string[]) => void;
+};
+
+function StringListEditor({ icon, label, metric, placeholder, values, onChange }: StringListEditorProps) {
+  const [draft, setDraft] = useState("");
+
+  const addValue = () => {
+    const next = draft.trim();
+    if (!next || values.includes(next)) {
+      setDraft("");
+      return;
+    }
+    onChange([...values, next]);
+    setDraft("");
+  };
+
+  return (
+    <div className="rounded-lg border border-slate-200 bg-white p-3">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <div className="flex items-center gap-2">
+          <span className="rounded-md bg-slate-100 p-1.5 text-slate-500">{icon}</span>
+          <label className="text-sm font-medium text-slate-900">{label}</label>
+        </div>
+        <Badge variant="outline" className="text-[11px]">{metric}</Badge>
+      </div>
+      <div className="mt-3 flex gap-2">
+        <Input
+          value={draft}
+          onChange={(event) => setDraft(event.target.value)}
+          onKeyDown={(event) => {
+            if (event.key === "Enter") {
+              event.preventDefault();
+              addValue();
+            }
+          }}
+          placeholder={placeholder}
+        />
+        <Button type="button" variant="outline" onClick={addValue}>
+          <Plus className="h-4 w-4" />
+        </Button>
+      </div>
+      <div className="mt-3 flex min-h-8 flex-wrap gap-2">
+        {values.length === 0 ? (
+          <span className="text-xs text-slate-400">未配置</span>
+        ) : values.map((value) => (
+          <Badge key={value} variant="secondary" className="gap-1 pr-1">
+            <span className="max-w-[260px] truncate">{value}</span>
+            <button
+              type="button"
+              aria-label={`移除 ${value}`}
+              className="rounded-sm p-0.5 text-slate-500 hover:bg-slate-200 hover:text-slate-900"
+              onClick={() => onChange(values.filter((item) => item !== value))}
+            >
+              <X className="h-3 w-3" />
+            </button>
+          </Badge>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+type GroundTruthEditorProps = {
+  value: GroundTruthForm;
+  onChange: (value: GroundTruthForm) => void;
+};
+
+function GroundTruthEditor({ value, onChange }: GroundTruthEditorProps) {
+  const update = (patch: Partial<GroundTruthForm>) => onChange({ ...value, ...patch });
+  const updateTool = (patch: Partial<GroundTruthTool>) => {
+    update({ expectedTool: { ...value.expectedTool, ...patch } });
+  };
+
+  const preview = useMemo(() => {
+    try {
+      return serializeGroundTruth(value) || "{}";
+    } catch {
+      return "工具参数不是合法 JSON 对象";
+    }
+  }, [value]);
+
+  return (
+    <div className="space-y-4">
+      <div className="grid gap-3 lg:grid-cols-2">
+        <StringListEditor
+          icon={<FileText className="h-4 w-4" />}
+          label="参考文档 ID"
+          metric="retrieval_doc_recall"
+          placeholder="docId"
+          values={value.referenceDocIds}
+          onChange={(referenceDocIds) => update({ referenceDocIds })}
+        />
+        <StringListEditor
+          icon={<Target className="h-4 w-4" />}
+          label="预期意图叶子 ID"
+          metric="intent_accuracy"
+          placeholder="intentLeafId"
+          values={value.expectedIntentLeafIds}
+          onChange={(expectedIntentLeafIds) => update({ expectedIntentLeafIds })}
+        />
+        <StringListEditor
+          icon={<BarChart3 className="h-4 w-4" />}
+          label="必要事实"
+          metric="answer_rule"
+          placeholder="答案必须包含的关键词或事实"
+          values={value.requiredFacts}
+          onChange={(requiredFacts) => update({ requiredFacts })}
+        />
+        <StringListEditor
+          icon={<X className="h-4 w-4" />}
+          label="禁用断言"
+          metric="answer_rule"
+          placeholder="答案不能出现的错误说法"
+          values={value.forbiddenClaims}
+          onChange={(forbiddenClaims) => update({ forbiddenClaims })}
+        />
+      </div>
+
+      <div className="grid gap-3 rounded-lg border border-slate-200 bg-white p-3 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.3fr)]">
+        <div className="space-y-2">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <div className="flex items-center gap-2">
+              <span className="rounded-md bg-slate-100 p-1.5 text-slate-500">
+                <Wrench className="h-4 w-4" />
+              </span>
+              <label className="text-sm font-medium text-slate-900">预期 MCP 工具</label>
+            </div>
+            <Badge variant="outline" className="text-[11px]">mcp_tool_accuracy</Badge>
+          </div>
+          <Input
+            value={value.expectedTool.name}
+            onChange={(event) => updateTool({ name: event.target.value })}
+            placeholder="weather_query"
+          />
+        </div>
+        <div className="space-y-2">
+          <div className="flex items-center justify-between gap-2">
+            <label className="text-sm font-medium text-slate-900">工具参数 JSON</label>
+            <Badge variant="secondary" className="text-[11px]">预留</Badge>
+          </div>
+          <Textarea
+            value={value.expectedTool.argsText}
+            onChange={(event) => updateTool({ argsText: event.target.value })}
+            placeholder='{"city":"北京"}'
+            className="min-h-[96px] font-mono text-xs"
+          />
+        </div>
+      </div>
+
+      <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
+        <div className="space-y-2">
+          <label className="text-sm font-medium">参考答案</label>
+          <Textarea
+            value={value.expectedAnswer}
+            onChange={(event) => update({ expectedAnswer: event.target.value })}
+            className="min-h-[118px]"
+          />
+        </div>
+        <div className="space-y-2">
+          <div className="flex items-center gap-2">
+            <Code2 className="h-4 w-4 text-slate-500" />
+            <label className="text-sm font-medium">JSON 预览</label>
+          </div>
+          <pre className="max-h-[160px] overflow-auto rounded-lg border border-slate-200 bg-slate-950 p-3 text-xs text-slate-100">
+            {preview}
+          </pre>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export function EvalPage() {
   const [suitePage, setSuitePage] = useState<PageResult<EvalSuite> | null>(null);
   const [casePage, setCasePage] = useState<PageResult<EvalCase> | null>(null);
@@ -148,7 +455,7 @@ export function EvalPage() {
   const [suiteDialog, setSuiteDialog] = useState<SuiteDialogState>({ open: false, mode: "create", item: null });
   const [caseDialog, setCaseDialog] = useState<CaseDialogState>({ open: false, mode: "create", item: null });
   const [suiteForm, setSuiteForm] = useState(emptySuiteForm);
-  const [caseForm, setCaseForm] = useState(emptyCaseForm);
+  const [caseForm, setCaseForm] = useState(createEmptyCaseForm);
   const [deleteSuiteTarget, setDeleteSuiteTarget] = useState<EvalSuite | null>(null);
   const [deleteCaseTarget, setDeleteCaseTarget] = useState<EvalCase | null>(null);
   const [deleteRunTarget, setDeleteRunTarget] = useState<EvalRun | null>(null);
@@ -281,19 +588,19 @@ export function EvalPage() {
 
   useEffect(() => {
     if (!caseDialog.open) {
-      setCaseForm(emptyCaseForm);
+      setCaseForm(createEmptyCaseForm());
       return;
     }
     if (caseDialog.mode === "edit" && caseDialog.item) {
       setCaseForm({
         question: caseDialog.item.question || "",
         category: caseDialog.item.category || "",
-        groundTruth: caseDialog.item.groundTruth || defaultGroundTruth,
+        groundTruth: parseGroundTruth(caseDialog.item.groundTruth || defaultGroundTruth),
         enabled: caseDialog.item.enabled ?? 1
       });
       return;
     }
-    setCaseForm(emptyCaseForm);
+    setCaseForm(createEmptyCaseForm());
   }, [caseDialog]);
 
   const handleSaveSuite = async () => {
@@ -328,18 +635,16 @@ export function EvalPage() {
       return;
     }
     const question = caseForm.question.trim();
-    const groundTruth = caseForm.groundTruth.trim();
     if (!question) {
       toast.error("请输入评测问题");
       return;
     }
-    if (groundTruth) {
-      try {
-        JSON.parse(groundTruth);
-      } catch {
-        toast.error("Ground Truth 不是合法 JSON");
-        return;
-      }
+    let groundTruth = "";
+    try {
+      groundTruth = serializeGroundTruth(caseForm.groundTruth);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "标准答案配置不合法");
+      return;
     }
     try {
       if (caseDialog.mode === "create") {
@@ -593,11 +898,12 @@ export function EvalPage() {
               </div>
 
               <div className="mt-4 overflow-x-auto rounded-lg border border-slate-200">
-                <Table className="min-w-[920px]">
+                <Table className="min-w-[1080px]">
                   <TableHeader>
                     <TableRow>
                       <TableHead>问题</TableHead>
                       <TableHead className="w-[120px]">分类</TableHead>
+                      <TableHead className="w-[220px]">标准答案</TableHead>
                       <TableHead className="w-[120px]">状态</TableHead>
                       <TableHead className="w-[180px]">更新时间</TableHead>
                       <TableHead className="w-[170px] text-right">操作</TableHead>
@@ -606,11 +912,11 @@ export function EvalPage() {
                   <TableBody>
                     {caseLoading ? (
                       <TableRow>
-                        <TableCell colSpan={5} className="py-8 text-center text-slate-500">加载中...</TableCell>
+                        <TableCell colSpan={6} className="py-8 text-center text-slate-500">加载中...</TableCell>
                       </TableRow>
                     ) : cases.length === 0 ? (
                       <TableRow>
-                        <TableCell colSpan={5} className="py-8 text-center text-slate-500">暂无评测用例</TableCell>
+                        <TableCell colSpan={6} className="py-8 text-center text-slate-500">暂无评测用例</TableCell>
                       </TableRow>
                     ) : (
                       cases.map((item) => (
@@ -619,6 +925,11 @@ export function EvalPage() {
                             {item.question}
                           </TableCell>
                           <TableCell>{item.category || "-"}</TableCell>
+                          <TableCell>
+                            <Badge variant={item.groundTruth ? "outline" : "secondary"} className="max-w-[200px] truncate">
+                              {groundTruthSummary(item.groundTruth)}
+                            </Badge>
+                          </TableCell>
                           <TableCell>
                             <Badge variant={item.enabled === 0 ? "secondary" : "default"}>
                               {item.enabled === 0 ? "停用" : "启用"}
@@ -910,10 +1221,10 @@ export function EvalPage() {
         open={caseDialog.open}
         onOpenChange={(open) => setCaseDialog((prev) => ({ ...prev, open, item: open ? prev.item : null }))}
       >
-        <DialogContent className="sm:max-w-[720px]">
+        <DialogContent className="max-h-[88vh] overflow-y-auto sm:max-w-[980px]">
           <DialogHeader>
             <DialogTitle>{caseDialog.mode === "create" ? "新增评测用例" : "编辑评测用例"}</DialogTitle>
-            <DialogDescription>配置问题、分类和 Ground Truth JSON</DialogDescription>
+            <DialogDescription>配置问题、分类和用于自动评分的标准答案</DialogDescription>
           </DialogHeader>
           <div className="grid gap-4">
             <div className="space-y-2">
@@ -942,11 +1253,18 @@ export function EvalPage() {
               </div>
             </div>
             <div className="space-y-2">
-              <label className="text-sm font-medium">Ground Truth</label>
-              <Textarea
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <div>
+                  <label className="text-sm font-medium">标准答案配置</label>
+                  <p className="mt-1 text-xs text-slate-500">
+                    这些字段会保存为 Ground Truth JSON，并驱动意图、检索、答案规则和工具命中评分。
+                  </p>
+                </div>
+                <Badge variant="secondary">Ground Truth</Badge>
+              </div>
+              <GroundTruthEditor
                 value={caseForm.groundTruth}
-                onChange={(event) => setCaseForm((prev) => ({ ...prev, groundTruth: event.target.value }))}
-                className="min-h-[220px] font-mono text-xs"
+                onChange={(groundTruth) => setCaseForm((prev) => ({ ...prev, groundTruth }))}
               />
             </div>
           </div>
