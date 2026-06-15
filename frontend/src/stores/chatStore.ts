@@ -25,8 +25,10 @@ interface ChatState {
   sessions: Session[];
   currentSessionId: string | null;
   messages: Message[];
+  messageCache: Record<string, MessageCacheEntry>;
   isLoading: boolean;
   sessionsLoaded: boolean;
+  sessionsFetchedAt: number | null;
   inputFocusKey: number;
   isStreaming: boolean;
   isCreatingNew: boolean;
@@ -39,11 +41,11 @@ interface ChatState {
   cancelRequested: boolean;
   editingMessageId: string | null;
   editingMessageContent: string;
-  fetchSessions: () => Promise<void>;
+  fetchSessions: (options?: { force?: boolean }) => Promise<void>;
   createSession: () => Promise<string>;
   deleteSession: (sessionId: string) => Promise<void>;
   renameSession: (sessionId: string, title: string) => Promise<void>;
-  selectSession: (sessionId: string) => Promise<void>;
+  selectSession: (sessionId: string, options?: { force?: boolean }) => Promise<void>;
   refreshCurrentMessages: () => Promise<void>;
   updateSessionTitle: (sessionId: string, title: string) => void;
   setDeepThinkingEnabled: (enabled: boolean) => void;
@@ -57,6 +59,18 @@ interface ChatState {
   appendThinkingContent: (delta: string) => void;
   submitFeedback: (messageId: string, feedback: FeedbackValue) => Promise<void>;
 }
+
+interface MessageCacheEntry {
+  messages: Message[];
+  updatedAt: number;
+}
+
+const SESSION_LIST_CACHE_TTL_MS = 60 * 1000;
+const MESSAGE_CACHE_TTL_MS = 5 * 60 * 1000;
+const MAX_CACHED_MESSAGE_SESSIONS = 20;
+
+let sessionsRequest: Promise<void> | null = null;
+const messageRequests = new Map<string, Promise<void>>();
 
 function mapVoteToFeedback(vote?: number | null): FeedbackValue {
   if (vote === 1) return "like";
@@ -100,14 +114,57 @@ function mapMessages(data: ConversationMessageVO[]): Message[] {
   }));
 }
 
+function putMessageCache(
+  cache: Record<string, MessageCacheEntry>,
+  sessionId: string,
+  messages: Message[]
+): Record<string, MessageCacheEntry> {
+  const next = {
+    ...cache,
+    [sessionId]: {
+      messages,
+      updatedAt: Date.now()
+    }
+  };
+  const entries = Object.entries(next).sort(([, left], [, right]) => right.updatedAt - left.updatedAt);
+  return Object.fromEntries(entries.slice(0, MAX_CACHED_MESSAGE_SESSIONS));
+}
+
+function removeMessageCache(
+  cache: Record<string, MessageCacheEntry>,
+  sessionId: string
+): Record<string, MessageCacheEntry> {
+  if (!cache[sessionId]) return cache;
+  const next = { ...cache };
+  delete next[sessionId];
+  return next;
+}
+
+function finalizeStreamingMessage(
+  messages: Message[],
+  streamingMessageId: string | null,
+  patch: Partial<Message>
+): Message[] {
+  return messages.map((message) =>
+    message.id === streamingMessageId
+      ? {
+          ...message,
+          ...patch
+        }
+      : message
+  );
+}
+
 const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL || "").replace(/\/$/, "");
 
 export const useChatStore = create<ChatState>((set, get) => ({
   sessions: [],
   currentSessionId: null,
   messages: [],
+  messageCache: {},
   isLoading: false,
   sessionsLoaded: false,
+  sessionsFetchedAt: null,
   inputFocusKey: 0,
   isStreaming: false,
   isCreatingNew: false,
@@ -120,27 +177,51 @@ export const useChatStore = create<ChatState>((set, get) => ({
   cancelRequested: false,
   editingMessageId: null,
   editingMessageContent: "",
-  fetchSessions: async () => {
-    set({ isLoading: true });
-    try {
-      const data = await listSessions();
-      const sessions = data
-        .map((item) => ({
-          id: item.conversationId,
-          title: item.title || "新对话",
-          lastTime: item.lastTime
-        }))
-        .sort((a, b) => {
-          const timeA = a.lastTime ? new Date(a.lastTime).getTime() : 0;
-          const timeB = b.lastTime ? new Date(b.lastTime).getTime() : 0;
-          return timeB - timeA;
-        });
-      set({ sessions });
-    } catch (error) {
-      toast.error((error as Error).message || "加载会话失败");
-    } finally {
-      set({ isLoading: false, sessionsLoaded: true });
+  fetchSessions: async (options) => {
+    const state = get();
+    const now = Date.now();
+    const hasFreshCache =
+      state.sessionsLoaded &&
+      state.sessionsFetchedAt !== null &&
+      now - state.sessionsFetchedAt < SESSION_LIST_CACHE_TTL_MS;
+
+    if (!options?.force && hasFreshCache) {
+      return;
     }
+    if (!options?.force && sessionsRequest) {
+      return sessionsRequest;
+    }
+
+    const request: Promise<void> = (async () => {
+      set({ isLoading: true });
+      try {
+        const data = await listSessions();
+        const sessions = data
+          .map((item) => ({
+            id: item.conversationId,
+            title: item.title || "新对话",
+            lastTime: item.lastTime
+          }))
+          .sort((a, b) => {
+            const timeA = a.lastTime ? new Date(a.lastTime).getTime() : 0;
+            const timeB = b.lastTime ? new Date(b.lastTime).getTime() : 0;
+            return timeB - timeA;
+          });
+        set({ sessions, sessionsFetchedAt: Date.now() });
+      } catch (error) {
+        toast.error((error as Error).message || "加载会话失败");
+      } finally {
+        set({ isLoading: false, sessionsLoaded: true });
+      }
+    })();
+
+    sessionsRequest = request;
+    request.finally(() => {
+      if (sessionsRequest === request) {
+        sessionsRequest = null;
+      }
+    });
+    return request;
   },
   createSession: async () => {
     const state = get();
@@ -181,6 +262,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
       set((state) => ({
         sessions: state.sessions.filter((session) => session.id !== sessionId),
         messages: state.currentSessionId === sessionId ? [] : state.messages,
+        messageCache: removeMessageCache(state.messageCache, sessionId),
         currentSessionId: state.currentSessionId === sessionId ? null : state.currentSessionId,
         editingMessageId: state.currentSessionId === sessionId ? null : state.editingMessageId,
         editingMessageContent:
@@ -206,42 +288,84 @@ export const useChatStore = create<ChatState>((set, get) => ({
       toast.error((error as Error).message || "重命名失败");
     }
   },
-  selectSession: async (sessionId) => {
+  selectSession: async (sessionId, options) => {
     if (!sessionId) return;
-    if (get().currentSessionId === sessionId && get().messages.length > 0) return;
-    if (get().isStreaming) {
+    const state = get();
+    if (!options?.force && state.currentSessionId === sessionId && state.messages.length > 0) {
+      return;
+    }
+    const cached = state.messageCache[sessionId];
+    const hasFreshCache =
+      cached !== undefined && Date.now() - cached.updatedAt < MESSAGE_CACHE_TTL_MS;
+    if (!options?.force && hasFreshCache) {
+      if (state.isStreaming && state.currentSessionId !== sessionId) {
+        get().cancelGeneration();
+      }
+      set({
+        currentSessionId: sessionId,
+        messages: cached.messages,
+        isLoading: false,
+        isCreatingNew: false,
+        thinkingStartAt: null,
+        isStreaming: false,
+        streamTaskId: null,
+        streamAbort: null,
+        streamingMessageId: null,
+        cancelRequested: false,
+        editingMessageId: null,
+        editingMessageContent: ""
+      });
+      return;
+    }
+    if (get().isStreaming && get().currentSessionId !== sessionId) {
       get().cancelGeneration();
     }
+    const inFlight = messageRequests.get(sessionId);
     set({
-      isLoading: true,
+      isLoading: !cached,
       currentSessionId: sessionId,
+      messages: cached?.messages ?? [],
       isCreatingNew: false,
       thinkingStartAt: null,
       editingMessageId: null,
       editingMessageContent: ""
     });
-    try {
-      const data = await listMessages(sessionId);
-      if (get().currentSessionId !== sessionId) {
-        return;
-      }
-      set({ messages: mapMessages(data) });
-    } catch (error) {
-      toast.error((error as Error).message || "加载消息失败");
-    } finally {
-      if (get().currentSessionId !== sessionId) {
-        set({ isLoading: false });
-        return;
-      }
-      set({
-        isLoading: false,
-        isStreaming: false,
-        streamTaskId: null,
-        streamAbort: null,
-        streamingMessageId: null,
-        cancelRequested: false
-      });
+    if (inFlight) {
+      return inFlight;
     }
+
+    const request = (async () => {
+      try {
+        const data = await listMessages(sessionId);
+        if (get().currentSessionId !== sessionId) {
+          return;
+        }
+        const messages = mapMessages(data);
+        set((latest) => ({
+          messages,
+          messageCache: putMessageCache(latest.messageCache, sessionId, messages)
+        }));
+      } catch (error) {
+        toast.error((error as Error).message || "加载消息失败");
+      } finally {
+        messageRequests.delete(sessionId);
+        if (get().currentSessionId !== sessionId) {
+          set({ isLoading: false });
+        } else {
+          set({
+            isLoading: false,
+            isStreaming: false,
+            streamTaskId: null,
+            streamAbort: null,
+            streamingMessageId: null,
+            cancelRequested: false
+          });
+        }
+      }
+    })();
+
+    messageRequests.set(sessionId, request);
+    return request;
   },
   refreshCurrentMessages: async () => {
     const sessionId = get().currentSessionId;
@@ -251,7 +375,11 @@ export const useChatStore = create<ChatState>((set, get) => ({
       if (get().currentSessionId !== sessionId || get().isStreaming) {
         return;
       }
-      set({ messages: mapMessages(data) });
+      const messages = mapMessages(data);
+      set((state) => ({
+        messages,
+        messageCache: putMessageCache(state.messageCache, sessionId, messages)
+      }));
     } catch {
       // 消息 ID 同步失败不影响当前对话展示。
     }
@@ -316,8 +444,10 @@ export const useChatStore = create<ChatState>((set, get) => ({
       }
       set((latest) => {
         const latestIndex = latest.messages.findIndex((message) => message.id === messageId);
+        const messages = latestIndex >= 0 ? latest.messages.slice(0, latestIndex) : latest.messages;
         return {
-          messages: latestIndex >= 0 ? latest.messages.slice(0, latestIndex) : latest.messages,
+          messages,
+          messageCache: putMessageCache(latest.messageCache, conversationId, messages),
           editingMessageId: null,
           editingMessageContent: ""
         };
@@ -357,15 +487,21 @@ export const useChatStore = create<ChatState>((set, get) => ({
       createdAt: new Date().toISOString()
     };
 
-    set((state) => ({
-      messages: [...state.messages, userMessage, assistantMessage],
-      isStreaming: true,
-      streamingMessageId: assistantId,
-      thinkingStartAt: null,
-      inputFocusKey,
-      streamTaskId: null,
-      cancelRequested: false
-    }));
+    set((state) => {
+      const messages = [...state.messages, userMessage, assistantMessage];
+      return {
+        messages,
+        messageCache: state.currentSessionId
+          ? putMessageCache(state.messageCache, state.currentSessionId, messages)
+          : state.messageCache,
+        isStreaming: true,
+        streamingMessageId: assistantId,
+        thinkingStartAt: null,
+        inputFocusKey,
+        streamTaskId: null,
+        cancelRequested: false
+      };
+    });
 
     const conversationId = get().currentSessionId;
     const selectedModelId = get().selectedModelId;
@@ -389,6 +525,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
           currentSessionId: nextId,
           isCreatingNew: false,
           streamTaskId: payload.taskId,
+          messageCache: putMessageCache(state.messageCache, nextId, state.messages),
           sessions: upsertSession(state.sessions, {
             id: nextId,
             title: existing?.title || "新对话",
@@ -434,36 +571,40 @@ export const useChatStore = create<ChatState>((set, get) => ({
           }));
         }
         if (payload.messageId) {
-          set((state) => ({
-            messages: state.messages.map((message) =>
-              message.id === state.streamingMessageId
-                ? {
-                    ...message,
-                    id: String(payload.messageId),
-                    status: "done",
-                    isThinking: false,
-                    citations: payload.citations || [],
-                    thinkingDuration:
-                      message.thinkingDuration ?? computeThinkingDuration(state.thinkingStartAt)
-                  }
-                : message
-            )
-          }));
+          set((state) => {
+            const target = state.messages.find((message) => message.id === state.streamingMessageId);
+            const messages = finalizeStreamingMessage(state.messages, state.streamingMessageId, {
+              id: String(payload.messageId),
+              status: "done",
+              isThinking: false,
+              citations: payload.citations || [],
+              thinkingDuration:
+                target?.thinkingDuration ?? computeThinkingDuration(state.thinkingStartAt)
+            });
+            return {
+              messages,
+              messageCache: state.currentSessionId
+                ? putMessageCache(state.messageCache, state.currentSessionId, messages)
+                : state.messageCache
+            };
+          });
         } else {
-          set((state) => ({
-            messages: state.messages.map((message) =>
-              message.id === state.streamingMessageId
-                ? {
-                    ...message,
-                    status: "done",
-                    isThinking: false,
-                    citations: payload.citations || [],
-                    thinkingDuration:
-                      message.thinkingDuration ?? computeThinkingDuration(state.thinkingStartAt)
-                  }
-                : message
-            )
-          }));
+          set((state) => {
+            const target = state.messages.find((message) => message.id === state.streamingMessageId);
+            const messages = finalizeStreamingMessage(state.messages, state.streamingMessageId, {
+              status: "done",
+              isThinking: false,
+              citations: payload.citations || [],
+              thinkingDuration:
+                target?.thinkingDuration ?? computeThinkingDuration(state.thinkingStartAt)
+            });
+            return {
+              messages,
+              messageCache: state.currentSessionId
+                ? putMessageCache(state.messageCache, state.currentSessionId, messages)
+                : state.messageCache
+            };
+          });
         }
       },
       onCancel: (payload: CompletionPayload) => {
@@ -471,29 +612,31 @@ export const useChatStore = create<ChatState>((set, get) => ({
         if (payload?.title && get().currentSessionId) {
           get().updateSessionTitle(get().currentSessionId as string, payload.title);
         }
-        set((state) => ({
-          messages: state.messages.map((message) => {
-            if (message.id !== state.streamingMessageId) return message;
-            const suffix = message.content.includes("（已停止生成）") ? "" : "\n\n（已停止生成）";
-            const nextId = payload?.messageId ? String(payload.messageId) : message.id;
-            return {
-              ...message,
-              id: nextId,
-              content: message.content + suffix,
-              status: "cancelled",
-              isThinking: false,
-              citations: payload?.citations || [],
-              thinkingDuration:
-                message.thinkingDuration ?? computeThinkingDuration(state.thinkingStartAt)
-            };
-          }),
-          isStreaming: false,
-          thinkingStartAt: null,
-          streamTaskId: null,
-          streamAbort: null,
-          streamingMessageId: null,
-          cancelRequested: false
-        }));
+        set((state) => {
+          const target = state.messages.find((message) => message.id === state.streamingMessageId);
+          const suffix = target?.content.includes("（已停止生成）") ? "" : "\n\n（已停止生成）";
+          const messages = finalizeStreamingMessage(state.messages, state.streamingMessageId, {
+            id: payload?.messageId ? String(payload.messageId) : target?.id,
+            content: `${target?.content ?? ""}${suffix}`,
+            status: "cancelled",
+            isThinking: false,
+            citations: payload?.citations || [],
+            thinkingDuration:
+              target?.thinkingDuration ?? computeThinkingDuration(state.thinkingStartAt)
+          });
+          return {
+            messages,
+            messageCache: state.currentSessionId
+              ? putMessageCache(state.messageCache, state.currentSessionId, messages)
+              : state.messageCache,
+            isStreaming: false,
+            thinkingStartAt: null,
+            streamTaskId: null,
+            streamAbort: null,
+            streamingMessageId: null,
+            cancelRequested: false
+          };
+        });
         get()
           .refreshCurrentMessages()
           .catch(() => null);
@@ -520,24 +663,26 @@ export const useChatStore = create<ChatState>((set, get) => ({
       },
       onError: (error: Error) => {
         if (get().streamingMessageId !== assistantId) return;
-        set((state) => ({
-          isStreaming: false,
-          thinkingStartAt: null,
-          streamTaskId: null,
-          streamAbort: null,
-          cancelRequested: false,
-          messages: state.messages.map((message) =>
-            message.id === state.streamingMessageId
-              ? {
-                  ...message,
-                  status: "error",
-                  isThinking: false,
-                  thinkingDuration:
-                    message.thinkingDuration ?? computeThinkingDuration(state.thinkingStartAt)
-                }
-              : message
-          )
-        }));
+        set((state) => {
+          const target = state.messages.find((message) => message.id === state.streamingMessageId);
+          const messages = finalizeStreamingMessage(state.messages, state.streamingMessageId, {
+            status: "error",
+            isThinking: false,
+            thinkingDuration:
+              target?.thinkingDuration ?? computeThinkingDuration(state.thinkingStartAt)
+          });
+          return {
+            isStreaming: false,
+            thinkingStartAt: null,
+            streamTaskId: null,
+            streamAbort: null,
+            cancelRequested: false,
+            messages,
+            messageCache: state.currentSessionId
+              ? putMessageCache(state.messageCache, state.currentSessionId, messages)
+              : state.messageCache
+          };
+        });
         toast.error(error.message || "生成失败");
       }
     };
@@ -585,29 +730,32 @@ export const useChatStore = create<ChatState>((set, get) => ({
     set((state) => {
       const shouldFinalizeThinking = state.thinkingStartAt != null;
       const duration = computeThinkingDuration(state.thinkingStartAt);
+      const messages = state.messages.map((message) => {
+        if (message.id !== state.streamingMessageId) return message;
+        if (message.status === "cancelled" || message.status === "error") return message;
+        return {
+          ...message,
+          content: message.content + delta,
+          isThinking: shouldFinalizeThinking ? false : message.isThinking,
+          thinkingDuration:
+            shouldFinalizeThinking && !message.thinkingDuration
+              ? duration
+              : message.thinkingDuration
+        };
+      });
       return {
         thinkingStartAt: shouldFinalizeThinking ? null : state.thinkingStartAt,
-        messages: state.messages.map((message) => {
-          if (message.id !== state.streamingMessageId) return message;
-          if (message.status === "cancelled" || message.status === "error") return message;
-          return {
-            ...message,
-            content: message.content + delta,
-            isThinking: shouldFinalizeThinking ? false : message.isThinking,
-            thinkingDuration:
-              shouldFinalizeThinking && !message.thinkingDuration
-                ? duration
-                : message.thinkingDuration
-          };
-        })
+        messages,
+        messageCache: state.currentSessionId
+          ? putMessageCache(state.messageCache, state.currentSessionId, messages)
+          : state.messageCache
       };
     });
   },
   appendThinkingContent: (delta) => {
     if (!delta) return;
-    set((state) => ({
-      thinkingStartAt: state.thinkingStartAt ?? Date.now(),
-      messages: state.messages.map((message) =>
+    set((state) => {
+      const messages = state.messages.map((message) =>
         message.id === state.streamingMessageId &&
         message.status !== "cancelled" &&
         message.status !== "error"
@@ -617,17 +765,30 @@ export const useChatStore = create<ChatState>((set, get) => ({
               isThinking: true
             }
           : message
-      )
-    }));
+      );
+      return {
+        thinkingStartAt: state.thinkingStartAt ?? Date.now(),
+        messages,
+        messageCache: state.currentSessionId
+          ? putMessageCache(state.messageCache, state.currentSessionId, messages)
+          : state.messageCache
+      };
+    });
   },
   submitFeedback: async (messageId, feedback) => {
     const vote = feedback === "like" ? 1 : feedback === "dislike" ? -1 : null;
     const prev = get().messages.find((message) => message.id === messageId)?.feedback ?? null;
-    set((state) => ({
-      messages: state.messages.map((message) =>
+    set((state) => {
+      const messages = state.messages.map((message) =>
         message.id === messageId ? { ...message, feedback } : message
-      )
-    }));
+      );
+      return {
+        messages,
+        messageCache: state.currentSessionId
+          ? putMessageCache(state.messageCache, state.currentSessionId, messages)
+          : state.messageCache
+      };
+    });
     if (vote === null) {
       toast.success("取消成功");
       return;
@@ -636,11 +797,17 @@ export const useChatStore = create<ChatState>((set, get) => ({
       await submitFeedback(messageId, vote);
       toast.success(feedback === "like" ? "点赞成功" : "点踩成功");
     } catch (error) {
-      set((state) => ({
-        messages: state.messages.map((message) =>
+      set((state) => {
+        const messages = state.messages.map((message) =>
           message.id === messageId ? { ...message, feedback: prev } : message
-        )
-      }));
+        );
+        return {
+          messages,
+          messageCache: state.currentSessionId
+            ? putMessageCache(state.messageCache, state.currentSessionId, messages)
+            : state.messageCache
+        };
+      });
       toast.error((error as Error).message || "反馈保存失败");
     }
   }

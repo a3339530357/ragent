@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState, type ComponentType, type KeyboardEvent } from "react";
-import { Link, Outlet, useLocation, useNavigate } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import {
   ChevronDown,
   ChevronRight,
@@ -46,6 +46,7 @@ import {
   type KnowledgeDocumentSearchItem
 } from "@/services/knowledgeService";
 import { Avatar } from "@/components/common/Avatar";
+import { CachedOutlet } from "@/components/layout/CachedOutlet";
 
 type MenuIcon = ComponentType<{ className?: string }>;
 
@@ -770,7 +771,7 @@ export function AdminLayout() {
               );
             })}
           </nav>
-          <Outlet />
+          <CachedOutlet />
         </div>
       </div>
 
