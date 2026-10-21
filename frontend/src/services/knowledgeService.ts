@@ -232,6 +232,9 @@ export const getDocuments = async (
   return page.records || [];
 };
 
+/** 单个文件上传的超时：全局 60 秒对大文件不够，批量时几路并发还会分摊上行带宽 */
+const UPLOAD_TIMEOUT_MS = 10 * 60 * 1000;
+
 export const uploadDocument = async (
   kbId: string,
   payload: KnowledgeDocumentUploadPayload
@@ -262,7 +265,8 @@ export const uploadDocument = async (
   return api.post<KnowledgeDocument, KnowledgeDocument>(`/knowledge-base/${kbId}/docs/upload`, formData, {
     headers: {
       "Content-Type": "multipart/form-data"
-    }
+    },
+    timeout: UPLOAD_TIMEOUT_MS
   });
 };
 
