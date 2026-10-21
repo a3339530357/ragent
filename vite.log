@@ -1,0 +1,345 @@
+nohup: ignoring input
+npm notice run ragent-frontend@0.1.0 dev
+npm notice run vite --host 0.0.0.0
+
+  VITE v5.4.21  ready in 455 ms
+
+  ➜  Local:   http://localhost:5173/
+  ➜  Network: http://172.16.0.23:5173/
+  ➜  Network: http://192.168.0.1:5173/
+  ➜  Network: http://192.168.16.1:5173/
+  ➜  Network: http://192.168.32.1:5173/
+npm notice run ragent-frontend@0.1.0 dev
+npm notice run vite --host 0.0.0.0
+
+  VITE v5.4.21  ready in 364 ms
+
+  ➜  Local:   http://localhost:5173/
+  ➜  Network: http://172.16.0.23:5173/
+  ➜  Network: http://192.168.0.1:5173/
+  ➜  Network: http://192.168.16.1:5173/
+  ➜  Network: http://192.168.32.1:5173/
+1:50:39 PM [vite] hmr update /src/pages/admin/knowledge/KnowledgeDocumentsPage.tsx, /src/styles/globals.css
+1:50:47 PM [vite] hmr update /src/pages/admin/knowledge/KnowledgeDocumentsPage.tsx, /src/styles/globals.css
+1:50:58 PM [vite] hmr update /src/pages/admin/knowledge/KnowledgeDocumentsPage.tsx, /src/styles/globals.css
+1:51:04 PM [vite] hmr update /src/pages/admin/knowledge/KnowledgeDocumentsPage.tsx, /src/styles/globals.css
+1:51:09 PM [vite] hmr update /src/pages/admin/knowledge/KnowledgeDocumentsPage.tsx, /src/styles/globals.css
+1:51:15 PM [vite] hmr update /src/pages/admin/knowledge/KnowledgeDocumentsPage.tsx, /src/styles/globals.css
+1:51:22 PM [vite] hmr update /src/pages/admin/knowledge/KnowledgeDocumentsPage.tsx, /src/styles/globals.css
+1:51:28 PM [vite] hmr update /src/pages/admin/knowledge/KnowledgeDocumentsPage.tsx, /src/styles/globals.css
+1:51:40 PM [vite] hmr update /src/pages/admin/knowledge/KnowledgeDocumentsPage.tsx, /src/styles/globals.css
+1:51:46 PM [vite] hmr update /src/pages/admin/knowledge/KnowledgeDocumentsPage.tsx, /src/styles/globals.css
+1:56:54 PM [vite] hmr update /src/pages/admin/knowledge/KnowledgeDocumentsPage.tsx, /src/styles/globals.css
+1:56:57 PM [vite] hmr update /src/pages/admin/knowledge/KnowledgeDocumentsPage.tsx, /src/styles/globals.css
+2:00:48 PM [vite] hmr update /src/pages/admin/knowledge/KnowledgeDocumentsPage.tsx, /src/styles/globals.css
+2:00:53 PM [vite] hmr update /src/pages/admin/knowledge/KnowledgeDocumentsPage.tsx, /src/styles/globals.css
+2:01:00 PM [vite] hmr update /src/pages/admin/knowledge/KnowledgeDocumentsPage.tsx, /src/styles/globals.css
+2:01:04 PM [vite] hmr update /src/pages/admin/knowledge/KnowledgeDocumentsPage.tsx, /src/styles/globals.css
+2:25:21 PM [vite] http proxy error: /api/ragent/agents
+AggregateError [ECONNREFUSED]: 
+    at internalConnectMultiple (node:net:1430:18)
+    at afterConnectMultiple (node:net:2099:7)
+2:25:21 PM [vite] http proxy error: /api/ragent/agents
+AggregateError [ECONNREFUSED]: 
+    at internalConnectMultiple (node:net:1430:18)
+    at afterConnectMultiple (node:net:2099:7)
+2:38:53 PM [vite] hmr update /src/components/agent/AgentMessageList.tsx, /src/styles/globals.css
+2:39:07 PM [vite] hmr update /src/components/agent/AgentMessageList.tsx, /src/styles/globals.css
+2:39:18 PM [vite] hmr update /src/components/agent/AgentMessageList.tsx, /src/styles/globals.css
+2:39:23 PM [vite] hmr update /src/components/agent/AgentMessageList.tsx, /src/styles/globals.css
+2:39:26 PM [vite] hmr update /src/components/agent/AgentMessageList.tsx, /src/styles/globals.css
+2:39:41 PM [vite] hmr update /src/components/agent/AgentMessageList.tsx, /src/styles/globals.css
+2:39:42 PM [vite] Internal server error: /root/projects/ragent/frontend/src/components/agent/AgentMessageList.tsx: Unterminated JSX contents. (304:6)
+
+  302 |         </div>
+  303 |       )}
+> 304 |     />
+      |       ^
+  305 |   );
+  306 | }
+  307 |
+  Plugin: vite:react-babel
+  File: /root/projects/ragent/frontend/src/components/agent/AgentMessageList.tsx:304:6
+  302|          </div>
+  303|        )}
+  304|      />
+     |        ^
+  305|    );
+  306|  }
+      at constructor (/root/projects/ragent/frontend/node_modules/@babel/parser/lib/index.js:365:19)
+      at TypeScriptParserMixin.raise (/root/projects/ragent/frontend/node_modules/@babel/parser/lib/index.js:6599:19)
+      at TypeScriptParserMixin.jsxReadToken (/root/projects/ragent/frontend/node_modules/@babel/parser/lib/index.js:4448:20)
+      at TypeScriptParserMixin.getTokenFromCode (/root/projects/ragent/frontend/node_modules/@babel/parser/lib/index.js:4774:12)
+      at TypeScriptParserMixin.getTokenFromCode (/root/projects/ragent/frontend/node_modules/@babel/parser/lib/index.js:9977:11)
+      at TypeScriptParserMixin.nextToken (/root/projects/ragent/frontend/node_modules/@babel/parser/lib/index.js:5782:10)
+      at TypeScriptParserMixin.next (/root/projects/ragent/frontend/node_modules/@babel/parser/lib/index.js:5692:10)
+      at TypeScriptParserMixin.eat (/root/projects/ragent/frontend/node_modules/@babel/parser/lib/index.js:5696:12)
+      at TypeScriptParserMixin.expect (/root/projects/ragent/frontend/node_modules/@babel/parser/lib/index.js:6898:15)
+      at TypeScriptParserMixin.jsxParseOpeningElementAfterName (/root/projects/ragent/frontend/node_modules/@babel/parser/lib/index.js:4671:10)
+      at TypeScriptParserMixin.jsxParseOpeningElementAfterName (/root/projects/ragent/frontend/node_modules/@babel/parser/lib/index.js:10033:18)
+      at TypeScriptParserMixin.jsxParseOpeningElementAt (/root/projects/ragent/frontend/node_modules/@babel/parser/lib/index.js:4662:17)
+      at TypeScriptParserMixin.jsxParseElementAt (/root/projects/ragent/frontend/node_modules/@babel/parser/lib/index.js:4686:33)
+      at TypeScriptParserMixin.jsxParseElementAt (/root/projects/ragent/frontend/node_modules/@babel/parser/lib/index.js:4698:32)
+      at TypeScriptParserMixin.jsxParseElement (/root/projects/ragent/frontend/node_modules/@babel/parser/lib/index.js:4749:17)
+      at TypeScriptParserMixin.parseExprAtom (/root/projects/ragent/frontend/node_modules/@babel/parser/lib/index.js:4759:19)
+      at TypeScriptParserMixin.parseExprSubscripts (/root/projects/ragent/frontend/node_modules/@babel/parser/lib/index.js:11071:23)
+      at TypeScriptParserMixin.parseUpdate (/root/projects/ragent/frontend/node_modules/@babel/parser/lib/index.js:11056:21)
+      at TypeScriptParserMixin.parseMaybeUnary (/root/projects/ragent/frontend/node_modules/@babel/parser/lib/index.js:11036:23)
+      at TypeScriptParserMixin.parseMaybeUnary (/root/projects/ragent/frontend/node_modules/@babel/parser/lib/index.js:9827:18)
+      at TypeScriptParserMixin.parseMaybeUnaryOrPrivate (/root/projects/ragent/frontend/node_modules/@babel/parser/lib/index.js:10889:61)
+      at TypeScriptParserMixin.parseExprOps (/root/projects/ragent/frontend/node_modules/@babel/parser/lib/index.js:10894:23)
+      at TypeScriptParserMixin.parseMaybeConditional (/root/projects/ragent/frontend/node_modules/@babel/parser/lib/index.js:10871:23)
+      at TypeScriptParserMixin.parseMaybeAssign (/root/projects/ragent/frontend/node_modules/@babel/parser/lib/index.js:10821:21)
+      at /root/projects/ragent/frontend/node_modules/@babel/parser/lib/index.js:9765:39
+      at TypeScriptParserMixin.tryParse (/root/projects/ragent/frontend/node_modules/@babel/parser/lib/index.js:6907:20)
+      at TypeScriptParserMixin.parseMaybeAssign (/root/projects/ragent/frontend/node_modules/@babel/parser/lib/index.js:9765:18)
+      at /root/projects/ragent/frontend/node_modules/@babel/parser/lib/index.js:10790:39
+      at TypeScriptParserMixin.allowInAnd (/root/projects/ragent/frontend/node_modules/@babel/parser/lib/index.js:12416:12)
+      at TypeScriptParserMixin.parseMaybeAssignAllowIn (/root/projects/ragent/frontend/node_modules/@babel/parser/lib/index.js:10790:17)
+      at TypeScriptParserMixin.parseMaybeAssignAllowInOrVoidPattern (/root/projects/ragent/frontend/node_modules/@babel/parser/lib/index.js:12483:17)
+      at TypeScriptParserMixin.parseParenAndDistinguishExpression (/root/projects/ragent/frontend/node_modules/@babel/parser/lib/index.js:11665:28)
+      at TypeScriptParserMixin.parseExprAtom (/root/projects/ragent/frontend/node_modules/@babel/parser/lib/index.js:11321:23)
+      at TypeScriptParserMixin.parseExprAtom (/root/projects/ragent/frontend/node_modules/@babel/parser/lib/index.js:4764:20)
+      at TypeScriptParserMixin.parseExprSubscripts (/root/projects/ragent/frontend/node_modules/@babel/parser/lib/index.js:11071:23)
+      at TypeScriptParserMixin.parseUpdate (/root/projects/ragent/frontend/node_modules/@babel/parser/lib/index.js:11056:21)
+      at TypeScriptParserMixin.parseMaybeUnary (/root/projects/ragent/frontend/node_modules/@babel/parser/lib/index.js:11036:23)
+      at TypeScriptParserMixin.parseMaybeUnary (/root/projects/ragent/frontend/node_modules/@babel/parser/lib/index.js:9827:18)
+      at TypeScriptParserMixin.parseMaybeUnaryOrPrivate (/root/projects/ragent/frontend/node_modules/@babel/parser/lib/index.js:10889:61)
+      at TypeScriptParserMixin.parseExprOps (/root/projects/ragent/frontend/node_modules/@babel/parser/lib/index.js:10894:23)
+      at TypeScriptParserMixin.parseMaybeConditional (/root/projects/ragent/frontend/node_modules/@babel/parser/lib/index.js:10871:23)
+      at TypeScriptParserMixin.parseMaybeAssign (/root/projects/ragent/frontend/node_modules/@babel/parser/lib/index.js:10821:21)
+      at TypeScriptParserMixin.parseMaybeAssign (/root/projects/ragent/frontend/node_modules/@babel/parser/lib/index.js:9776:20)
+      at TypeScriptParserMixin.parseExpressionBase (/root/projects/ragent/frontend/node_modules/@babel/parser/lib/index.js:10774:23)
+      at /root/projects/ragent/frontend/node_modules/@babel/parser/lib/index.js:10770:39
+      at TypeScriptParserMixin.allowInAnd (/root/projects/ragent/frontend/node_modules/@babel/parser/lib/index.js:12411:16)
+      at TypeScriptParserMixin.parseExpression (/root/projects/ragent/frontend/node_modules/@babel/parser/lib/index.js:10770:17)
+      at TypeScriptParserMixin.parseReturnStatement (/root/projects/ragent/frontend/node_modules/@babel/parser/lib/index.js:13132:28)
+      at TypeScriptParserMixin.parseStatementContent (/root/projects/ragent/frontend/node_modules/@babel/parser/lib/index.js:12788:21)
+      at TypeScriptParserMixin.parseStatementContent (/root/projects/ragent/frontend/node_modules/@babel/parser/lib/index.js:9508:18)
+2:39:42 PM [vite] Internal server error: /root/projects/ragent/frontend/src/components/agent/AgentMessageList.tsx: Unterminated JSX contents. (304:6)
+
+  302 |         </div>
+  303 |       )}
+> 304 |     />
+      |       ^
+  305 |   );
+  306 | }
+  307 |
+  Plugin: vite:react-babel
+  File: /root/projects/ragent/frontend/src/components/agent/AgentMessageList.tsx:304:6
+  302|          </div>
+  303|        )}
+  304|      />
+     |        ^
+  305|    );
+  306|  }
+      at constructor (/root/projects/ragent/frontend/node_modules/@babel/parser/lib/index.js:365:19)
+      at TypeScriptParserMixin.raise (/root/projects/ragent/frontend/node_modules/@babel/parser/lib/index.js:6599:19)
+      at TypeScriptParserMixin.jsxReadToken (/root/projects/ragent/frontend/node_modules/@babel/parser/lib/index.js:4448:20)
+      at TypeScriptParserMixin.getTokenFromCode (/root/projects/ragent/frontend/node_modules/@babel/parser/lib/index.js:4774:12)
+      at TypeScriptParserMixin.getTokenFromCode (/root/projects/ragent/frontend/node_modules/@babel/parser/lib/index.js:9977:11)
+      at TypeScriptParserMixin.nextToken (/root/projects/ragent/frontend/node_modules/@babel/parser/lib/index.js:5782:10)
+      at TypeScriptParserMixin.next (/root/projects/ragent/frontend/node_modules/@babel/parser/lib/index.js:5692:10)
+      at TypeScriptParserMixin.eat (/root/projects/ragent/frontend/node_modules/@babel/parser/lib/index.js:5696:12)
+      at TypeScriptParserMixin.expect (/root/projects/ragent/frontend/node_modules/@babel/parser/lib/index.js:6898:15)
+      at TypeScriptParserMixin.jsxParseOpeningElementAfterName (/root/projects/ragent/frontend/node_modules/@babel/parser/lib/index.js:4671:10)
+      at TypeScriptParserMixin.jsxParseOpeningElementAfterName (/root/projects/ragent/frontend/node_modules/@babel/parser/lib/index.js:10033:18)
+      at TypeScriptParserMixin.jsxParseOpeningElementAt (/root/projects/ragent/frontend/node_modules/@babel/parser/lib/index.js:4662:17)
+      at TypeScriptParserMixin.jsxParseElementAt (/root/projects/ragent/frontend/node_modules/@babel/parser/lib/index.js:4686:33)
+      at TypeScriptParserMixin.jsxParseElementAt (/root/projects/ragent/frontend/node_modules/@babel/parser/lib/index.js:4698:32)
+      at TypeScriptParserMixin.jsxParseElement (/root/projects/ragent/frontend/node_modules/@babel/parser/lib/index.js:4749:17)
+      at TypeScriptParserMixin.parseExprAtom (/root/projects/ragent/frontend/node_modules/@babel/parser/lib/index.js:4759:19)
+      at TypeScriptParserMixin.parseExprSubscripts (/root/projects/ragent/frontend/node_modules/@babel/parser/lib/index.js:11071:23)
+      at TypeScriptParserMixin.parseUpdate (/root/projects/ragent/frontend/node_modules/@babel/parser/lib/index.js:11056:21)
+      at TypeScriptParserMixin.parseMaybeUnary (/root/projects/ragent/frontend/node_modules/@babel/parser/lib/index.js:11036:23)
+      at TypeScriptParserMixin.parseMaybeUnary (/root/projects/ragent/frontend/node_modules/@babel/parser/lib/index.js:9827:18)
+      at TypeScriptParserMixin.parseMaybeUnaryOrPrivate (/root/projects/ragent/frontend/node_modules/@babel/parser/lib/index.js:10889:61)
+      at TypeScriptParserMixin.parseExprOps (/root/projects/ragent/frontend/node_modules/@babel/parser/lib/index.js:10894:23)
+      at TypeScriptParserMixin.parseMaybeConditional (/root/projects/ragent/frontend/node_modules/@babel/parser/lib/index.js:10871:23)
+      at TypeScriptParserMixin.parseMaybeAssign (/root/projects/ragent/frontend/node_modules/@babel/parser/lib/index.js:10821:21)
+      at /root/projects/ragent/frontend/node_modules/@babel/parser/lib/index.js:9765:39
+      at TypeScriptParserMixin.tryParse (/root/projects/ragent/frontend/node_modules/@babel/parser/lib/index.js:6907:20)
+      at TypeScriptParserMixin.parseMaybeAssign (/root/projects/ragent/frontend/node_modules/@babel/parser/lib/index.js:9765:18)
+      at /root/projects/ragent/frontend/node_modules/@babel/parser/lib/index.js:10790:39
+      at TypeScriptParserMixin.allowInAnd (/root/projects/ragent/frontend/node_modules/@babel/parser/lib/index.js:12416:12)
+      at TypeScriptParserMixin.parseMaybeAssignAllowIn (/root/projects/ragent/frontend/node_modules/@babel/parser/lib/index.js:10790:17)
+      at TypeScriptParserMixin.parseMaybeAssignAllowInOrVoidPattern (/root/projects/ragent/frontend/node_modules/@babel/parser/lib/index.js:12483:17)
+      at TypeScriptParserMixin.parseParenAndDistinguishExpression (/root/projects/ragent/frontend/node_modules/@babel/parser/lib/index.js:11665:28)
+      at TypeScriptParserMixin.parseExprAtom (/root/projects/ragent/frontend/node_modules/@babel/parser/lib/index.js:11321:23)
+      at TypeScriptParserMixin.parseExprAtom (/root/projects/ragent/frontend/node_modules/@babel/parser/lib/index.js:4764:20)
+      at TypeScriptParserMixin.parseExprSubscripts (/root/projects/ragent/frontend/node_modules/@babel/parser/lib/index.js:11071:23)
+      at TypeScriptParserMixin.parseUpdate (/root/projects/ragent/frontend/node_modules/@babel/parser/lib/index.js:11056:21)
+      at TypeScriptParserMixin.parseMaybeUnary (/root/projects/ragent/frontend/node_modules/@babel/parser/lib/index.js:11036:23)
+      at TypeScriptParserMixin.parseMaybeUnary (/root/projects/ragent/frontend/node_modules/@babel/parser/lib/index.js:9827:18)
+      at TypeScriptParserMixin.parseMaybeUnaryOrPrivate (/root/projects/ragent/frontend/node_modules/@babel/parser/lib/index.js:10889:61)
+      at TypeScriptParserMixin.parseExprOps (/root/projects/ragent/frontend/node_modules/@babel/parser/lib/index.js:10894:23)
+      at TypeScriptParserMixin.parseMaybeConditional (/root/projects/ragent/frontend/node_modules/@babel/parser/lib/index.js:10871:23)
+      at TypeScriptParserMixin.parseMaybeAssign (/root/projects/ragent/frontend/node_modules/@babel/parser/lib/index.js:10821:21)
+      at TypeScriptParserMixin.parseMaybeAssign (/root/projects/ragent/frontend/node_modules/@babel/parser/lib/index.js:9776:20)
+      at TypeScriptParserMixin.parseExpressionBase (/root/projects/ragent/frontend/node_modules/@babel/parser/lib/index.js:10774:23)
+      at /root/projects/ragent/frontend/node_modules/@babel/parser/lib/index.js:10770:39
+      at TypeScriptParserMixin.allowInAnd (/root/projects/ragent/frontend/node_modules/@babel/parser/lib/index.js:12411:16)
+      at TypeScriptParserMixin.parseExpression (/root/projects/ragent/frontend/node_modules/@babel/parser/lib/index.js:10770:17)
+      at TypeScriptParserMixin.parseReturnStatement (/root/projects/ragent/frontend/node_modules/@babel/parser/lib/index.js:13132:28)
+      at TypeScriptParserMixin.parseStatementContent (/root/projects/ragent/frontend/node_modules/@babel/parser/lib/index.js:12788:21)
+      at TypeScriptParserMixin.parseStatementContent (/root/projects/ragent/frontend/node_modules/@babel/parser/lib/index.js:9508:18)
+2:39:42 PM [vite] Internal server error: /root/projects/ragent/frontend/src/components/agent/AgentMessageList.tsx: Unterminated JSX contents. (304:6)
+
+  302 |         </div>
+  303 |       )}
+> 304 |     />
+      |       ^
+  305 |   );
+  306 | }
+  307 |
+  Plugin: vite:react-babel
+  File: /root/projects/ragent/frontend/src/components/agent/AgentMessageList.tsx:304:6
+  302|          </div>
+  303|        )}
+  304|      />
+     |        ^
+  305|    );
+  306|  }
+      at constructor (/root/projects/ragent/frontend/node_modules/@babel/parser/lib/index.js:365:19)
+      at TypeScriptParserMixin.raise (/root/projects/ragent/frontend/node_modules/@babel/parser/lib/index.js:6599:19)
+      at TypeScriptParserMixin.jsxReadToken (/root/projects/ragent/frontend/node_modules/@babel/parser/lib/index.js:4448:20)
+      at TypeScriptParserMixin.getTokenFromCode (/root/projects/ragent/frontend/node_modules/@babel/parser/lib/index.js:4774:12)
+      at TypeScriptParserMixin.getTokenFromCode (/root/projects/ragent/frontend/node_modules/@babel/parser/lib/index.js:9977:11)
+      at TypeScriptParserMixin.nextToken (/root/projects/ragent/frontend/node_modules/@babel/parser/lib/index.js:5782:10)
+      at TypeScriptParserMixin.next (/root/projects/ragent/frontend/node_modules/@babel/parser/lib/index.js:5692:10)
+      at TypeScriptParserMixin.eat (/root/projects/ragent/frontend/node_modules/@babel/parser/lib/index.js:5696:12)
+      at TypeScriptParserMixin.expect (/root/projects/ragent/frontend/node_modules/@babel/parser/lib/index.js:6898:15)
+      at TypeScriptParserMixin.jsxParseOpeningElementAfterName (/root/projects/ragent/frontend/node_modules/@babel/parser/lib/index.js:4671:10)
+      at TypeScriptParserMixin.jsxParseOpeningElementAfterName (/root/projects/ragent/frontend/node_modules/@babel/parser/lib/index.js:10033:18)
+      at TypeScriptParserMixin.jsxParseOpeningElementAt (/root/projects/ragent/frontend/node_modules/@babel/parser/lib/index.js:4662:17)
+      at TypeScriptParserMixin.jsxParseElementAt (/root/projects/ragent/frontend/node_modules/@babel/parser/lib/index.js:4686:33)
+      at TypeScriptParserMixin.jsxParseElementAt (/root/projects/ragent/frontend/node_modules/@babel/parser/lib/index.js:4698:32)
+      at TypeScriptParserMixin.jsxParseElement (/root/projects/ragent/frontend/node_modules/@babel/parser/lib/index.js:4749:17)
+      at TypeScriptParserMixin.parseExprAtom (/root/projects/ragent/frontend/node_modules/@babel/parser/lib/index.js:4759:19)
+      at TypeScriptParserMixin.parseExprSubscripts (/root/projects/ragent/frontend/node_modules/@babel/parser/lib/index.js:11071:23)
+      at TypeScriptParserMixin.parseUpdate (/root/projects/ragent/frontend/node_modules/@babel/parser/lib/index.js:11056:21)
+      at TypeScriptParserMixin.parseMaybeUnary (/root/projects/ragent/frontend/node_modules/@babel/parser/lib/index.js:11036:23)
+      at TypeScriptParserMixin.parseMaybeUnary (/root/projects/ragent/frontend/node_modules/@babel/parser/lib/index.js:9827:18)
+      at TypeScriptParserMixin.parseMaybeUnaryOrPrivate (/root/projects/ragent/frontend/node_modules/@babel/parser/lib/index.js:10889:61)
+      at TypeScriptParserMixin.parseExprOps (/root/projects/ragent/frontend/node_modules/@babel/parser/lib/index.js:10894:23)
+      at TypeScriptParserMixin.parseMaybeConditional (/root/projects/ragent/frontend/node_modules/@babel/parser/lib/index.js:10871:23)
+      at TypeScriptParserMixin.parseMaybeAssign (/root/projects/ragent/frontend/node_modules/@babel/parser/lib/index.js:10821:21)
+      at /root/projects/ragent/frontend/node_modules/@babel/parser/lib/index.js:9765:39
+      at TypeScriptParserMixin.tryParse (/root/projects/ragent/frontend/node_modules/@babel/parser/lib/index.js:6907:20)
+      at TypeScriptParserMixin.parseMaybeAssign (/root/projects/ragent/frontend/node_modules/@babel/parser/lib/index.js:9765:18)
+      at /root/projects/ragent/frontend/node_modules/@babel/parser/lib/index.js:10790:39
+      at TypeScriptParserMixin.allowInAnd (/root/projects/ragent/frontend/node_modules/@babel/parser/lib/index.js:12416:12)
+      at TypeScriptParserMixin.parseMaybeAssignAllowIn (/root/projects/ragent/frontend/node_modules/@babel/parser/lib/index.js:10790:17)
+      at TypeScriptParserMixin.parseMaybeAssignAllowInOrVoidPattern (/root/projects/ragent/frontend/node_modules/@babel/parser/lib/index.js:12483:17)
+      at TypeScriptParserMixin.parseParenAndDistinguishExpression (/root/projects/ragent/frontend/node_modules/@babel/parser/lib/index.js:11665:28)
+      at TypeScriptParserMixin.parseExprAtom (/root/projects/ragent/frontend/node_modules/@babel/parser/lib/index.js:11321:23)
+      at TypeScriptParserMixin.parseExprAtom (/root/projects/ragent/frontend/node_modules/@babel/parser/lib/index.js:4764:20)
+      at TypeScriptParserMixin.parseExprSubscripts (/root/projects/ragent/frontend/node_modules/@babel/parser/lib/index.js:11071:23)
+      at TypeScriptParserMixin.parseUpdate (/root/projects/ragent/frontend/node_modules/@babel/parser/lib/index.js:11056:21)
+      at TypeScriptParserMixin.parseMaybeUnary (/root/projects/ragent/frontend/node_modules/@babel/parser/lib/index.js:11036:23)
+      at TypeScriptParserMixin.parseMaybeUnary (/root/projects/ragent/frontend/node_modules/@babel/parser/lib/index.js:9827:18)
+      at TypeScriptParserMixin.parseMaybeUnaryOrPrivate (/root/projects/ragent/frontend/node_modules/@babel/parser/lib/index.js:10889:61)
+      at TypeScriptParserMixin.parseExprOps (/root/projects/ragent/frontend/node_modules/@babel/parser/lib/index.js:10894:23)
+      at TypeScriptParserMixin.parseMaybeConditional (/root/projects/ragent/frontend/node_modules/@babel/parser/lib/index.js:10871:23)
+      at TypeScriptParserMixin.parseMaybeAssign (/root/projects/ragent/frontend/node_modules/@babel/parser/lib/index.js:10821:21)
+      at TypeScriptParserMixin.parseMaybeAssign (/root/projects/ragent/frontend/node_modules/@babel/parser/lib/index.js:9776:20)
+      at TypeScriptParserMixin.parseExpressionBase (/root/projects/ragent/frontend/node_modules/@babel/parser/lib/index.js:10774:23)
+      at /root/projects/ragent/frontend/node_modules/@babel/parser/lib/index.js:10770:39
+      at TypeScriptParserMixin.allowInAnd (/root/projects/ragent/frontend/node_modules/@babel/parser/lib/index.js:12411:16)
+      at TypeScriptParserMixin.parseExpression (/root/projects/ragent/frontend/node_modules/@babel/parser/lib/index.js:10770:17)
+      at TypeScriptParserMixin.parseReturnStatement (/root/projects/ragent/frontend/node_modules/@babel/parser/lib/index.js:13132:28)
+      at TypeScriptParserMixin.parseStatementContent (/root/projects/ragent/frontend/node_modules/@babel/parser/lib/index.js:12788:21)
+      at TypeScriptParserMixin.parseStatementContent (/root/projects/ragent/frontend/node_modules/@babel/parser/lib/index.js:9508:18)
+2:39:42 PM [vite] Internal server error: /root/projects/ragent/frontend/src/components/agent/AgentMessageList.tsx: Unterminated JSX contents. (304:6)
+
+  302 |         </div>
+  303 |       )}
+> 304 |     />
+      |       ^
+  305 |   );
+  306 | }
+  307 |
+  Plugin: vite:react-babel
+  File: /root/projects/ragent/frontend/src/components/agent/AgentMessageList.tsx:304:6
+  302|          </div>
+  303|        )}
+  304|      />
+     |        ^
+  305|    );
+  306|  }
+      at constructor (/root/projects/ragent/frontend/node_modules/@babel/parser/lib/index.js:365:19)
+      at TypeScriptParserMixin.raise (/root/projects/ragent/frontend/node_modules/@babel/parser/lib/index.js:6599:19)
+      at TypeScriptParserMixin.jsxReadToken (/root/projects/ragent/frontend/node_modules/@babel/parser/lib/index.js:4448:20)
+      at TypeScriptParserMixin.getTokenFromCode (/root/projects/ragent/frontend/node_modules/@babel/parser/lib/index.js:4774:12)
+      at TypeScriptParserMixin.getTokenFromCode (/root/projects/ragent/frontend/node_modules/@babel/parser/lib/index.js:9977:11)
+      at TypeScriptParserMixin.nextToken (/root/projects/ragent/frontend/node_modules/@babel/parser/lib/index.js:5782:10)
+      at TypeScriptParserMixin.next (/root/projects/ragent/frontend/node_modules/@babel/parser/lib/index.js:5692:10)
+      at TypeScriptParserMixin.eat (/root/projects/ragent/frontend/node_modules/@babel/parser/lib/index.js:5696:12)
+      at TypeScriptParserMixin.expect (/root/projects/ragent/frontend/node_modules/@babel/parser/lib/index.js:6898:15)
+      at TypeScriptParserMixin.jsxParseOpeningElementAfterName (/root/projects/ragent/frontend/node_modules/@babel/parser/lib/index.js:4671:10)
+      at TypeScriptParserMixin.jsxParseOpeningElementAfterName (/root/projects/ragent/frontend/node_modules/@babel/parser/lib/index.js:10033:18)
+      at TypeScriptParserMixin.jsxParseOpeningElementAt (/root/projects/ragent/frontend/node_modules/@babel/parser/lib/index.js:4662:17)
+      at TypeScriptParserMixin.jsxParseElementAt (/root/projects/ragent/frontend/node_modules/@babel/parser/lib/index.js:4686:33)
+      at TypeScriptParserMixin.jsxParseElementAt (/root/projects/ragent/frontend/node_modules/@babel/parser/lib/index.js:4698:32)
+      at TypeScriptParserMixin.jsxParseElement (/root/projects/ragent/frontend/node_modules/@babel/parser/lib/index.js:4749:17)
+      at TypeScriptParserMixin.parseExprAtom (/root/projects/ragent/frontend/node_modules/@babel/parser/lib/index.js:4759:19)
+      at TypeScriptParserMixin.parseExprSubscripts (/root/projects/ragent/frontend/node_modules/@babel/parser/lib/index.js:11071:23)
+      at TypeScriptParserMixin.parseUpdate (/root/projects/ragent/frontend/node_modules/@babel/parser/lib/index.js:11056:21)
+      at TypeScriptParserMixin.parseMaybeUnary (/root/projects/ragent/frontend/node_modules/@babel/parser/lib/index.js:11036:23)
+      at TypeScriptParserMixin.parseMaybeUnary (/root/projects/ragent/frontend/node_modules/@babel/parser/lib/index.js:9827:18)
+      at TypeScriptParserMixin.parseMaybeUnaryOrPrivate (/root/projects/ragent/frontend/node_modules/@babel/parser/lib/index.js:10889:61)
+      at TypeScriptParserMixin.parseExprOps (/root/projects/ragent/frontend/node_modules/@babel/parser/lib/index.js:10894:23)
+      at TypeScriptParserMixin.parseMaybeConditional (/root/projects/ragent/frontend/node_modules/@babel/parser/lib/index.js:10871:23)
+      at TypeScriptParserMixin.parseMaybeAssign (/root/projects/ragent/frontend/node_modules/@babel/parser/lib/index.js:10821:21)
+      at /root/projects/ragent/frontend/node_modules/@babel/parser/lib/index.js:9765:39
+      at TypeScriptParserMixin.tryParse (/root/projects/ragent/frontend/node_modules/@babel/parser/lib/index.js:6907:20)
+      at TypeScriptParserMixin.parseMaybeAssign (/root/projects/ragent/frontend/node_modules/@babel/parser/lib/index.js:9765:18)
+      at /root/projects/ragent/frontend/node_modules/@babel/parser/lib/index.js:10790:39
+      at TypeScriptParserMixin.allowInAnd (/root/projects/ragent/frontend/node_modules/@babel/parser/lib/index.js:12416:12)
+      at TypeScriptParserMixin.parseMaybeAssignAllowIn (/root/projects/ragent/frontend/node_modules/@babel/parser/lib/index.js:10790:17)
+      at TypeScriptParserMixin.parseMaybeAssignAllowInOrVoidPattern (/root/projects/ragent/frontend/node_modules/@babel/parser/lib/index.js:12483:17)
+      at TypeScriptParserMixin.parseParenAndDistinguishExpression (/root/projects/ragent/frontend/node_modules/@babel/parser/lib/index.js:11665:28)
+      at TypeScriptParserMixin.parseExprAtom (/root/projects/ragent/frontend/node_modules/@babel/parser/lib/index.js:11321:23)
+      at TypeScriptParserMixin.parseExprAtom (/root/projects/ragent/frontend/node_modules/@babel/parser/lib/index.js:4764:20)
+      at TypeScriptParserMixin.parseExprSubscripts (/root/projects/ragent/frontend/node_modules/@babel/parser/lib/index.js:11071:23)
+      at TypeScriptParserMixin.parseUpdate (/root/projects/ragent/frontend/node_modules/@babel/parser/lib/index.js:11056:21)
+      at TypeScriptParserMixin.parseMaybeUnary (/root/projects/ragent/frontend/node_modules/@babel/parser/lib/index.js:11036:23)
+      at TypeScriptParserMixin.parseMaybeUnary (/root/projects/ragent/frontend/node_modules/@babel/parser/lib/index.js:9827:18)
+      at TypeScriptParserMixin.parseMaybeUnaryOrPrivate (/root/projects/ragent/frontend/node_modules/@babel/parser/lib/index.js:10889:61)
+      at TypeScriptParserMixin.parseExprOps (/root/projects/ragent/frontend/node_modules/@babel/parser/lib/index.js:10894:23)
+      at TypeScriptParserMixin.parseMaybeConditional (/root/projects/ragent/frontend/node_modules/@babel/parser/lib/index.js:10871:23)
+      at TypeScriptParserMixin.parseMaybeAssign (/root/projects/ragent/frontend/node_modules/@babel/parser/lib/index.js:10821:21)
+      at TypeScriptParserMixin.parseMaybeAssign (/root/projects/ragent/frontend/node_modules/@babel/parser/lib/index.js:9776:20)
+      at TypeScriptParserMixin.parseExpressionBase (/root/projects/ragent/frontend/node_modules/@babel/parser/lib/index.js:10774:23)
+      at /root/projects/ragent/frontend/node_modules/@babel/parser/lib/index.js:10770:39
+      at TypeScriptParserMixin.allowInAnd (/root/projects/ragent/frontend/node_modules/@babel/parser/lib/index.js:12411:16)
+      at TypeScriptParserMixin.parseExpression (/root/projects/ragent/frontend/node_modules/@babel/parser/lib/index.js:10770:17)
+      at TypeScriptParserMixin.parseReturnStatement (/root/projects/ragent/frontend/node_modules/@babel/parser/lib/index.js:13132:28)
+      at TypeScriptParserMixin.parseStatementContent (/root/projects/ragent/frontend/node_modules/@babel/parser/lib/index.js:12788:21)
+      at TypeScriptParserMixin.parseStatementContent (/root/projects/ragent/frontend/node_modules/@babel/parser/lib/index.js:9508:18)
+2:39:44 PM [vite] hmr update /src/components/agent/AgentMessageList.tsx, /src/styles/globals.css
+12:31:33 PM [vite] hmr update /src/pages/admin/knowledge/KnowledgeDocumentsPage.tsx, /src/styles/globals.css
+12:31:33 PM [vite] vite.config.js changed, restarting server...
+12:31:33 PM [vite] vite.config.js changed, restarting server...
+12:31:34 PM [vite] server restarted.
+12:31:57 PM [vite] hmr update /src/components/agent/AgentMessageList.tsx, /src/styles/globals.css
+12:31:57 PM [vite] hmr update /src/pages/admin/knowledge/KnowledgeDocumentsPage.tsx, /src/styles/globals.css
+2:11:09 AM [vite] hmr update /src/styles/globals.css, /src/pages/DocPreviewPage.tsx, /src/pages/admin/AdminLayout.tsx, /src/pages/admin/knowledge/KnowledgeListPage.tsx, /src/pages/admin/knowledge/KnowledgeChunksPage.tsx, /src/pages/admin/knowledge/KnowledgeDocumentsPage.tsx, /src/pages/admin/knowledge-graph/KnowledgeGraphPage.tsx, /src/pages/admin/intent-tree/IntentTreePage.tsx, /src/pages/admin/intent-tree/IntentListPage.tsx, /src/pages/admin/intent-tree/IntentEditPage.tsx, /src/components/document/DocumentPreview.tsx, /src/components/admin/CreateKnowledgeBaseDialog.tsx
+2:11:17 AM [vite] hmr update /src/styles/globals.css, /src/pages/DocPreviewPage.tsx, /src/pages/admin/AdminLayout.tsx, /src/pages/admin/knowledge/KnowledgeListPage.tsx, /src/pages/admin/knowledge/KnowledgeChunksPage.tsx, /src/pages/admin/knowledge/KnowledgeDocumentsPage.tsx, /src/pages/admin/knowledge-graph/KnowledgeGraphPage.tsx, /src/pages/admin/intent-tree/IntentTreePage.tsx, /src/pages/admin/intent-tree/IntentListPage.tsx, /src/pages/admin/intent-tree/IntentEditPage.tsx, /src/components/document/DocumentPreview.tsx, /src/components/admin/CreateKnowledgeBaseDialog.tsx
+2:11:29 AM [vite] hmr update /src/pages/admin/knowledge/KnowledgeDocumentsPage.tsx, /src/styles/globals.css
+2:11:36 AM [vite] hmr update /src/pages/admin/knowledge/KnowledgeDocumentsPage.tsx, /src/styles/globals.css
+2:11:49 AM [vite] hmr update /src/pages/admin/knowledge/KnowledgeDocumentsPage.tsx, /src/styles/globals.css
+2:12:04 AM [vite] hmr update /src/pages/admin/knowledge/KnowledgeDocumentsPage.tsx, /src/styles/globals.css
+2:13:23 AM [vite] hmr update /src/pages/admin/knowledge/KnowledgeDocumentsPage.tsx, /src/styles/globals.css
+2:13:34 AM [vite] hmr update /src/pages/admin/knowledge/KnowledgeDocumentsPage.tsx, /src/styles/globals.css
+11:50:45 PM [vite] hmr update /src/components/agent/AgentSidebar.tsx, /src/styles/globals.css
+11:50:57 PM [vite] hmr update /src/components/agent/AgentSidebar.tsx, /src/styles/globals.css
+1:05:09 AM [vite] hmr update /src/components/agent/AgentMessageList.tsx, /src/styles/globals.css
+1:05:09 AM [vite] hmr update /src/components/agent/AgentSidebar.tsx, /src/styles/globals.css
+1:05:09 AM [vite] hmr update /src/pages/admin/knowledge/KnowledgeDocumentsPage.tsx, /src/styles/globals.css
+1:05:09 AM [vite] hmr update /src/styles/globals.css, /src/pages/DocPreviewPage.tsx, /src/pages/admin/AdminLayout.tsx, /src/pages/admin/knowledge/KnowledgeListPage.tsx, /src/pages/admin/knowledge/KnowledgeChunksPage.tsx, /src/pages/admin/knowledge/KnowledgeDocumentsPage.tsx, /src/pages/admin/knowledge-graph/KnowledgeGraphPage.tsx, /src/pages/admin/intent-tree/IntentTreePage.tsx, /src/pages/admin/intent-tree/IntentListPage.tsx, /src/pages/admin/intent-tree/IntentEditPage.tsx, /src/components/document/DocumentPreview.tsx, /src/components/admin/CreateKnowledgeBaseDialog.tsx
+1:05:09 AM [vite] vite.config.js changed, restarting server...
+1:05:09 AM [vite] hmr update /src/pages/admin/knowledge/KnowledgeDocumentsPage.tsx, /src/styles/globals.css
+1:05:09 AM [vite] hmr update /src/styles/globals.css, /src/pages/DocPreviewPage.tsx, /src/pages/admin/AdminLayout.tsx, /src/pages/admin/knowledge/KnowledgeListPage.tsx, /src/pages/admin/knowledge/KnowledgeChunksPage.tsx, /src/pages/admin/knowledge/KnowledgeDocumentsPage.tsx, /src/pages/admin/knowledge-graph/KnowledgeGraphPage.tsx, /src/pages/admin/intent-tree/IntentTreePage.tsx, /src/pages/admin/intent-tree/IntentListPage.tsx, /src/pages/admin/intent-tree/IntentEditPage.tsx, /src/components/document/DocumentPreview.tsx, /src/components/admin/CreateKnowledgeBaseDialog.tsx
+1:05:09 AM [vite] hmr update /src/components/agent/AgentMessageList.tsx, /src/styles/globals.css
+1:05:11 AM [vite] server restarted.

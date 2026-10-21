@@ -19,8 +19,8 @@ package com.nageoffer.ai.ragent.agent.memory;
 
 import cn.hutool.core.util.StrUtil;
 import com.nageoffer.ai.ragent.agent.config.AgentProperties;
+import com.nageoffer.ai.ragent.agent.config.AgentThinkingOptions;
 import com.nageoffer.ai.ragent.agent.config.ConditionalOnAgentEngine;
-import com.nageoffer.ai.ragent.infra.enums.ModelProvider;
 import com.nageoffer.ai.ragent.rag.core.prompt.AgentPromptResolver;
 import com.nageoffer.ai.ragent.rag.core.prompt.AgentPromptSlot;
 import io.agentscope.core.message.ContentBlock;
@@ -73,6 +73,7 @@ public class AgentConversationSummarizer {
     private final AgentProperties agentProperties;
     private final AgentPromptResolver agentPromptResolver;
     private final AgentMemoryProperties memoryProperties;
+    private final AgentThinkingOptions agentThinkingOptions;
 
     /**
      * 生成失败返回 null，调用方据此放弃本次压缩
@@ -138,10 +139,8 @@ public class AgentConversationSummarizer {
                         .timeout(SUMMARY_TIMEOUT)
                         .maxAttempts(agentProperties.getMaxRetries())
                         .build());
-        // DeepSeek V4 默认开思考，不显式关会白等一段推理；别家不认这个字段，发了会 400
-        if (ModelProvider.DEEP_SEEK.matches(agentProperties.getChat().getProvider())) {
-            options.additionalBodyParam("thinking", Map.of("type", "disabled"));
-        }
+        // 按供应商方言显式关闭思考：多数模型默认开思考，不关会白等一段推理；方言不明的供应商不发任何字段
+        agentThinkingOptions.disable(options);
         return options.build();
     }
 

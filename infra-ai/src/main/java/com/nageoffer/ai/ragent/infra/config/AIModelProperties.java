@@ -17,6 +17,7 @@
 
 package com.nageoffer.ai.ragent.infra.config;
 
+import com.nageoffer.ai.ragent.infra.enums.ThinkingParam;
 import lombok.Data;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.context.annotation.Configuration;
@@ -197,6 +198,12 @@ public class AIModelProperties {
          * key: 端点类型，value: 端点路径
          */
         private Map<String, String> endpoints = new HashMap<>();
+
+        /**
+         * 思考开关的请求参数方言（reasoning-effort / enable-thinking / thinking-object）
+         * 不填时专用客户端沿用各自方言，通用 OpenAI 兼容供应商不发任何思考字段
+         */
+        private ThinkingParam thinkingParam;
     }
 
     /**

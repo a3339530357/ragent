@@ -19,6 +19,7 @@ package com.nageoffer.ai.ragent.agent.memory;
 
 import com.nageoffer.ai.ragent.agent.config.AgentEngineConfiguration;
 import com.nageoffer.ai.ragent.agent.config.AgentProperties;
+import com.nageoffer.ai.ragent.agent.config.AgentThinkingOptions;
 import com.nageoffer.ai.ragent.infra.config.AIModelProperties;
 import com.nageoffer.ai.ragent.rag.core.prompt.AgentPromptResolver;
 import com.nageoffer.ai.ragent.rag.core.prompt.AgentPromptSlot;
@@ -95,7 +96,8 @@ class AgentConversationSummarizerLiveTest {
                 });
         AgentMemoryProperties memory = new AgentMemoryProperties();
         memory.setContextWindowChars(100_000);
-        summarizer = new AgentConversationSummarizer(model, properties, resolver, memory);
+        summarizer = new AgentConversationSummarizer(model, properties, resolver, memory,
+                new AgentThinkingOptions(properties, models));
     }
 
     @Test

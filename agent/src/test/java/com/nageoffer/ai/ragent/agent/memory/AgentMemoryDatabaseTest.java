@@ -24,11 +24,13 @@ import com.baomidou.mybatisplus.core.toolkit.IdWorker;
 import com.baomidou.mybatisplus.spring.MybatisSqlSessionFactoryBean;
 import org.springframework.http.converter.json.Jackson2ObjectMapperBuilder;
 import com.nageoffer.ai.ragent.agent.config.AgentProperties;
+import com.nageoffer.ai.ragent.agent.config.AgentThinkingOptions;
 import com.nageoffer.ai.ragent.agent.dao.entity.AgentMessageDO;
 import com.nageoffer.ai.ragent.agent.dao.mapper.AgentMemoryCursorMapper;
 import com.nageoffer.ai.ragent.agent.dao.mapper.AgentMemoryMapper;
 import com.nageoffer.ai.ragent.agent.dao.mapper.AgentMessageMapper;
 import com.nageoffer.ai.ragent.framework.database.MyMetaObjectHandler;
+import com.nageoffer.ai.ragent.infra.config.AIModelProperties;
 import com.nageoffer.ai.ragent.rag.core.prompt.AgentPromptResolver;
 import io.agentscope.core.message.Msg;
 import io.agentscope.core.message.TextBlock;
@@ -232,7 +234,8 @@ class AgentMemoryDatabaseTest {
     private AgentMemoryJudge judge(Model model) {
         AgentPromptResolver resolver = mock(AgentPromptResolver.class);
         when(resolver.render(any(), anyMap())).thenReturn("抽取提示词");
-        return new AgentMemoryJudge(model, new AgentProperties(), resolver, memory, Jackson2ObjectMapperBuilder.json().build());
+        return new AgentMemoryJudge(model, new AgentProperties(), resolver, memory, Jackson2ObjectMapperBuilder.json().build(),
+                new AgentThinkingOptions(new AgentProperties(), new AIModelProperties()));
     }
 
     private AgentMemoryLock grantingLock() {

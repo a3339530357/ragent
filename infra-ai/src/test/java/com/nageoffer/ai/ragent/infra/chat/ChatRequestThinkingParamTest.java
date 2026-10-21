@@ -21,6 +21,7 @@ import com.google.gson.JsonObject;
 import com.nageoffer.ai.ragent.framework.convention.ChatMessage;
 import com.nageoffer.ai.ragent.framework.convention.ChatRequest;
 import com.nageoffer.ai.ragent.infra.config.AIModelProperties;
+import com.nageoffer.ai.ragent.infra.enums.ThinkingParam;
 import com.nageoffer.ai.ragent.infra.model.ModelTarget;
 import org.junit.jupiter.api.Test;
 
@@ -40,6 +41,7 @@ class ChatRequestThinkingParamTest {
 
     private static final String FIELD = "enable_thinking";
     private static final String THINKING_OBJECT = "thinking";
+    private static final String REASONING_EFFORT = "reasoning_effort";
 
     @Test
     void bailianShouldCarryThinkingFlagWhenEnabled() {
@@ -163,8 +165,61 @@ class ChatRequestThinkingParamTest {
         assertEquals(1, body.getAsJsonArray("messages").size());
     }
 
+    /**
+     * new-api 只认 reasoning_effort（thinking 对象、enable_thinking 会在协议转换中被丢掉），
+     * 声明该方言后关闭思考必须显式发 none，否则模型照样先想一段再答
+     */
+    @Test
+    void genericShouldSendReasoningEffortNoneWhenDeclaredAndClosed() {
+        JsonObject body = buildBody(new GenericOpenAIChatClient("zhipu"), Boolean.FALSE, ThinkingParam.REASONING_EFFORT);
+        assertEquals("none", body.get(REASONING_EFFORT).getAsString());
+        assertFalse(body.has(FIELD));
+        assertFalse(body.has(THINKING_OBJECT));
+    }
+
+    @Test
+    void genericShouldTreatAbsentFlagAsClosed() {
+        JsonObject body = buildBody(new GenericOpenAIChatClient("zhipu"), null, ThinkingParam.REASONING_EFFORT);
+        assertEquals("none", body.get(REASONING_EFFORT).getAsString());
+    }
+
+    /**
+     * 要求思考时只表态「开」：reasoning_effort 方言不发字段，强度交给模型默认
+     */
+    @Test
+    void genericShouldLeaveEffortToModelWhenThinking() {
+        assertFalse(buildBody(new GenericOpenAIChatClient("zhipu"), Boolean.TRUE, ThinkingParam.REASONING_EFFORT)
+                .has(REASONING_EFFORT));
+    }
+
+    @Test
+    void genericShouldFollowDeclaredSwitchDialects() {
+        GenericOpenAIChatClient client = new GenericOpenAIChatClient("gateway");
+        assertEquals("disabled", thinkingType(buildBody(client, Boolean.FALSE, ThinkingParam.THINKING_OBJECT)));
+        assertEquals("enabled", thinkingType(buildBody(client, Boolean.TRUE, ThinkingParam.THINKING_OBJECT)));
+        assertFalse(buildBody(client, Boolean.FALSE, ThinkingParam.ENABLE_THINKING).get(FIELD).getAsBoolean());
+        assertTrue(buildBody(client, Boolean.TRUE, ThinkingParam.ENABLE_THINKING).get(FIELD).getAsBoolean());
+    }
+
+    /**
+     * 未声明方言的通用供应商一个思考字段都不发，与「新供应商默认不认识私有字段」一致
+     */
+    @Test
+    void genericWithoutDeclaredParamShouldSendNothing() {
+        JsonObject body = buildBody(new GenericOpenAIChatClient("zhipu"), Boolean.FALSE);
+        assertFalse(body.has(REASONING_EFFORT));
+        assertFalse(body.has(FIELD));
+        assertFalse(body.has(THINKING_OBJECT));
+    }
+
     private JsonObject buildBody(AbstractOpenAIStyleChatClient client, Boolean thinking) {
         return client.buildRequestBody(request(thinking), target(), false);
+    }
+
+    private JsonObject buildBody(AbstractOpenAIStyleChatClient client, Boolean thinking, ThinkingParam thinkingParam) {
+        ModelTarget target = target();
+        target.provider().setThinkingParam(thinkingParam);
+        return client.buildRequestBody(request(thinking), target, false);
     }
 
     private String thinkingType(JsonObject body) {

@@ -22,6 +22,7 @@ import com.nageoffer.ai.ragent.agent.dao.mapper.AgentStateMapper;
 import com.nageoffer.ai.ragent.agent.state.PgAgentStateStore;
 import com.nageoffer.ai.ragent.infra.config.AIModelProperties;
 import com.nageoffer.ai.ragent.infra.enums.ModelProvider;
+import io.agentscope.core.model.GenerateOptions;
 import io.agentscope.extensions.model.openai.OpenAIChatModel;
 import io.agentscope.extensions.model.openai.compat.deepseek.DeepSeekFormatter;
 import lombok.RequiredArgsConstructor;
@@ -67,7 +68,16 @@ public class AgentEngineConfiguration {
                 // 兼容端点普遍无法同时处理 response_format 与工具调用，统一走 generate_response 兜底
                 .nativeStructuredOutputWithTools(false);
         applyProviderFormatter(builder, chat.getProvider());
+        GenerateOptions thinkingDefaults = agentThinkingOptions().defaultOptions();
+        if (thinkingDefaults != null) {
+            builder.generateOptions(thinkingDefaults);
+        }
         return builder.build();
+    }
+
+    @Bean
+    public AgentThinkingOptions agentThinkingOptions() {
+        return new AgentThinkingOptions(agentProperties, aiModelProperties);
     }
 
     /*
