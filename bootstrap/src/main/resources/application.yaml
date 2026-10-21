@@ -212,6 +212,14 @@ ai:
         chat: /v1/chat/completions
       # new-api 只认 reasoning_effort（none 关 / low / medium / high），thinking 对象与 enable_thinking 会在协议转换中被丢掉
       thinking-param: reasoning-effort
+    deepseeknewapi:
+      # 走旧服务器自建 new-api（渠道3=GLM，OpenAI 兼容）；依赖旧机存活
+      url: http://103.236.97.137:20665
+      api-key: ${ZHIPU_API_KEY:}
+      endpoints:
+        chat: /v1/chat/completions
+      # new-api 只认 reasoning_effort（none 关 / low / medium / high），thinking 对象与 enable_thinking 会在协议转换中被丢掉
+      thinking-param: reasoning-effort
     siliconflow:
       url: https://api.siliconflow.cn
       api-key: ${SILICONFLOW_API_KEY:}
@@ -240,9 +248,9 @@ ai:
 
   chat:
     candidates:
-      - id: glm-5.3
-        provider: zhipu
-        model: glm-5.3
+      - id: deepseek-v4.1-flash
+        provider: deepseeknewapi
+        model: deepseek-v4.1-flash
         supports-thinking: true
       - id: gemini-3.8-flash
         provider: zhipu
@@ -254,13 +262,13 @@ ai:
 
     tiers:
       fast:
-        candidates: [ glm-5.3,gemini-3.8-flash]
+        candidates: [ deepseek-v4.1-flash,gemini-3.8-flash]
         timeout-ms: 8000
       standard:
-        candidates: [ glm-5.3 ,gemini-3.8-flash]
+        candidates: [ deepseek-v4.1-flash ,gemini-3.8-flash]
         timeout-ms: 120000
       deep:
-        candidates: [ glm-5.3,gemini-3.8-flash]
+        candidates: [ deepseek-v4.1-flash,gemini-3.8-flash]
         timeout-ms: 180000
 
   embedding:
