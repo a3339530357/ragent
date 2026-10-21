@@ -1021,13 +1021,43 @@ export function KnowledgeDocumentsPage() {
       <UploadDialog
         open={uploadOpen}
         onOpenChange={setUploadOpen}
-        onSubmit={async (payload) => {
-          if (!kbId) return;
-          await uploadDocument(kbId, payload);
-          toast.success("上传成功");
-          setUploadOpen(false);
+        onSubmit={async (payload, batchFiles, { onProgress, isStopped }) => {
+          if (!kbId) return [];
+          let leftover: File[] = [];
+          if (batchFiles.length === 0) {
+            // URL 等非文件来源：保持原单次上传
+            await uploadDocument(kbId, payload);
+            toast.success("上传成功");
+          } else {
+            const result = await uploadFilesConcurrently(
+              batchFiles,
+              (file) => uploadDocument(kbId, { ...payload, file }),
+              onProgress,
+              isStopped
+            );
+            const uploaded = batchFiles.length - result.failed.length - result.notStarted.length;
+            const parts = [`成功 ${uploaded} 个`];
+            if (result.failed.length > 0) {
+              const preview = result.failed.slice(0, 10).map((f) => f.name).join("、");
+              parts.push(`失败 ${result.failed.length} 个：${preview}${result.failed.length > 10 ? " 等" : ""}`);
+            }
+            if (result.notStarted.length > 0) {
+              parts.push(`已停止，${result.notStarted.length} 个未上传`);
+            }
+            leftover = [...result.failed, ...result.notStarted];
+            if (leftover.length === 0) {
+              toast.success(`成功上传 ${uploaded} 个文档`);
+            } else {
+              toast.error(`${parts.join("；")}。未完成的文件已留在列表中，可再次点击上传`, { duration: 15000 });
+            }
+          }
+          // 有失败或中途停止时保留弹窗，剩余文件留在列表里供重传
+          if (leftover.length === 0) {
+            setUploadOpen(false);
+          }
           setCurrent(1);
           await loadDocuments(1, statusFilter, keyword);
+          return leftover;
         }}
       />
 
@@ -1445,7 +1475,24 @@ export function KnowledgeDocumentsPage() {
 interface UploadDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onSubmit: (payload: KnowledgeDocumentUploadPayload) => Promise<void>;
+  /** 返回未完成（失败或停止后未开始）的文件，弹窗把它们留在列表里供重传 */
+  onSubmit: (
+    payload: KnowledgeDocumentUploadPayload,
+    files: File[],
+    control: UploadControl
+  ) => Promise<File[]>;
+}
+
+interface UploadControl {
+  onProgress: (progress: UploadProgress) => void;
+  /** 用户点了「停止」：已发出的请求照常完成，不再发新的 */
+  isStopped: () => boolean;
+}
+
+interface UploadProgress {
+  finished: number;
+  failed: number;
+  total: number;
 }
 
 const uploadSchema = z
@@ -1531,17 +1578,175 @@ type UploadFormValues = z.infer<typeof uploadSchema>;
  */
 type BudgetFieldName = "maxChars" | "overlapChars" | "rowsPerChunk" | "toleranceFactor";
 
+/** 本地上传支持的后缀：文件选择框与拖拽（含文件夹）共用，拖拽不受 accept 约束，须自己过滤 */
+const ACCEPTED_EXTENSIONS = [".pdf", ".md", ".markdown", ".doc", ".docx", ".txt", ".xlsx", ".xls", ".csv", ".png", ".jpg", ".jpeg", ".svg"];
+
+/** 批量上传并发数：后端全站上传信号量只有 10 个、排队 5 秒拿不到即 429，留余量给其他人 */
+const UPLOAD_CONCURRENCY = 3;
+
+/** 单个文件的自动重试间隔，重试条件见 isRetryableUploadError */
+const UPLOAD_RETRY_DELAYS_MS = [2000, 5000];
+
+/** 文件列表最多渲染的行数：上千个文件全渲染会让弹窗卡顿，其余只计数 */
+const MAX_LISTED_FILES = 200;
+
+const isAcceptedFile = (file: File) => {
+  const name = file.name.toLowerCase();
+  return ACCEPTED_EXTENSIONS.some((ext) => name.endsWith(ext));
+};
+
+/** 同一批里重复拖入同一个文件时去重：名称、大小、修改时间都相同视为同一文件 */
+const fileKey = (file: File) => `${file.name}|${file.size}|${file.lastModified}`;
+
+/**
+ * 只重试「确定没落库」的失败：429（限流在进业务前就拒了）、502/503（请求没到后端）、连不上
+ * 超时、500、504 时服务端可能已经存了文件，自动重试会产生重复文档，留在失败列表里由人决定；
+ * 业务校验失败（拦截器转成的普通 Error）重试也没用
+ */
+const isRetryableUploadError = (error: unknown) => {
+  const err = error as { response?: { status?: number }; code?: string } | null;
+  const status = err?.response?.status;
+  if (status !== undefined) {
+    return status === 429 || status === 502 || status === 503;
+  }
+  return err?.code === "ERR_NETWORK";
+};
+
+const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
+/**
+ * 固定并发的批量上传：单个失败不中断整批；停止后已发出的请求照常完成，未开始的原样返回
+ */
+async function uploadFilesConcurrently(
+  files: File[],
+  uploadOne: (file: File) => Promise<unknown>,
+  onProgress: (progress: UploadProgress) => void,
+  isStopped: () => boolean
+): Promise<{ failed: File[]; notStarted: File[] }> {
+  const failed: File[] = [];
+  let next = 0;
+  let finished = 0;
+  const worker = async () => {
+    while (next < files.length && !isStopped()) {
+      const file = files[next++];
+      try {
+        for (let attempt = 0; ; attempt++) {
+          try {
+            await uploadOne(file);
+            break;
+          } catch (error) {
+            if (attempt >= UPLOAD_RETRY_DELAYS_MS.length || !isRetryableUploadError(error) || isStopped()) {
+              throw error;
+            }
+            await sleep(UPLOAD_RETRY_DELAYS_MS[attempt]);
+          }
+        }
+      } catch (error) {
+        console.error(`上传失败: ${file.name}`, error);
+        failed.push(file);
+      } finally {
+        finished++;
+        onProgress({ finished, failed: failed.length, total: files.length });
+      }
+    }
+  };
+  await Promise.all(Array.from({ length: Math.min(UPLOAD_CONCURRENCY, files.length) }, worker));
+  return { failed, notStarted: files.slice(next) };
+}
+
+/**
+ * 递归展开拖入的文件和文件夹
+ * readEntries 每次只返回一批（Chrome 约 100 条），必须循环读到空为止，否则大文件夹会丢文件
+ */
+async function collectDroppedFiles(entries: FileSystemEntry[]): Promise<File[]> {
+  const result: File[] = [];
+  const walk = async (entry: FileSystemEntry): Promise<void> => {
+    if (entry.isFile) {
+      result.push(await new Promise<File>((resolve, reject) => (entry as FileSystemFileEntry).file(resolve, reject)));
+      return;
+    }
+    if (entry.isDirectory) {
+      const reader = (entry as FileSystemDirectoryEntry).createReader();
+      for (;;) {
+        const batch = await new Promise<FileSystemEntry[]>((resolve, reject) => reader.readEntries(resolve, reject));
+        if (batch.length === 0) break;
+        for (const child of batch) {
+          await walk(child);
+        }
+      }
+    }
+  };
+  for (const entry of entries) {
+    await walk(entry);
+  }
+  return result;
+}
+
 function UploadDialog({ open, onOpenChange, onSubmit }: UploadDialogProps) {
-  const [file, setFile] = useState<File | null>(null);
+  const [files, setFiles] = useState<File[]>([]);
   const [isDragging, setIsDragging] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [saving, setSaving] = useState(false);
+  const [progress, setProgress] = useState<UploadProgress | null>(null);
+  const [stopping, setStopping] = useState(false);
+  const stopRef = useRef(false);
+  // 正在递归读取拖入的文件夹（上千个文件要读一会儿），期间禁止提交
+  const [collecting, setCollecting] = useState(false);
+  // 文件夹是异步读完再加入的，合并必须基于最新列表而不是闭包里的旧值
+  const filesRef = useRef<File[]>([]);
   const [specSchema, setSpecSchema] = useState<IngestionSpecSchema | null>(null);
   const [noChunk, setNoChunk] = useState(false);
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [pipelines, setPipelines] = useState<IngestionPipeline[]>([]);
   const [loadingPipelines, setLoadingPipelines] = useState(false);
   const [maxFileSize, setMaxFileSize] = useState<number>(50 * 1024 * 1024);
+
+  const updateFiles = (next: File[]) => {
+    filesRef.current = next;
+    setFiles(next);
+  };
+
+  // 批量加入文件，不限数量：过滤不支持的格式与超大文件，重复拖入的同一文件只留一份
+  const addFiles = (incoming: File[]) => {
+    if (incoming.length === 0) return;
+    const seen = new Set(filesRef.current.map(fileKey));
+    const accepted: File[] = [];
+    let unsupported = 0;
+    let oversized = 0;
+    let duplicated = 0;
+    for (const file of incoming) {
+      if (!isAcceptedFile(file)) {
+        unsupported++;
+      } else if (file.size > maxFileSize) {
+        oversized++;
+      } else if (seen.has(fileKey(file))) {
+        duplicated++;
+      } else {
+        seen.add(fileKey(file));
+        accepted.push(file);
+      }
+    }
+    const skipped = [
+      unsupported > 0 ? `${unsupported} 个格式不支持` : null,
+      oversized > 0 ? `${oversized} 个超过 ${Math.floor(maxFileSize / 1024 / 1024)}MB` : null,
+      duplicated > 0 ? `${duplicated} 个已在列表中` : null
+    ].filter(Boolean);
+    if (skipped.length > 0) {
+      toast.warning(`加入 ${accepted.length} 个文件，忽略 ${skipped.join("、")}`);
+    }
+    if (accepted.length > 0) {
+      updateFiles([...filesRef.current, ...accepted]);
+    }
+  };
+
+  const removeFileAt = (index: number) => {
+    updateFiles(filesRef.current.filter((_, i) => i !== index));
+  };
+
+  const clearFiles = () => {
+    updateFiles([]);
+    if (fileInputRef.current) fileInputRef.current.value = "";
+  };
 
   const form = useForm<UploadFormValues>({
     resolver: zodResolver(uploadSchema),
@@ -1567,7 +1772,8 @@ function UploadDialog({ open, onOpenChange, onSubmit }: UploadDialogProps) {
   const isPipelineMode = processMode === "pipeline";
 
   // 格式判定的唯一依据：本地文件取文件名后缀，远程来源取链接路径后缀
-  const fileExt = isUrlSource ? extOfUrl(sourceLocation) : extOf(file?.name);
+  // 批量上传时以第一个文件驱动类型相关面板（表格/解析档位），管线参数对整批统一生效
+  const fileExt = isUrlSource ? extOfUrl(sourceLocation) : extOf(files[0]?.name);
   // 表格类：配置面板切到表格专属项
   const isTableType = isTableExt(fileExt);
   // 档位选项：只对两档确实命中不同解析器的格式展示
@@ -1592,7 +1798,8 @@ function UploadDialog({ open, onOpenChange, onSubmit }: UploadDialogProps) {
 
   useEffect(() => {
     if (open) {
-      setFile(null);
+      updateFiles([]);
+      if (fileInputRef.current) fileInputRef.current.value = "";
       form.reset({
         sourceType: "file",
         sourceLocation: "",
@@ -1615,7 +1822,7 @@ function UploadDialog({ open, onOpenChange, onSubmit }: UploadDialogProps) {
 
   useEffect(() => {
     if (isUrlSource) {
-      setFile(null);
+      updateFiles([]);
     }
   }, [isUrlSource]);
 
@@ -1632,14 +1839,17 @@ function UploadDialog({ open, onOpenChange, onSubmit }: UploadDialogProps) {
   const handleNoChunkToggle = () => setNoChunk(prev => !prev);
 
   const handleSubmit = async (values: UploadFormValues) => {
-    if (values.sourceType === "file" && !file) {
+    if (values.sourceType === "file" && files.length === 0) {
       toast.error("请选择文件");
       return;
     }
-    if (values.sourceType === "file" && file && file.size > maxFileSize) {
-      const sizeMB = Math.floor(maxFileSize / 1024 / 1024);
-      toast.error(`上传文件大小超过限制，最大允许 ${sizeMB}MB`);
-      return;
+    if (values.sourceType === "file") {
+      const oversized = files.find(f => f.size > maxFileSize);
+      if (oversized) {
+        const sizeMB = Math.floor(maxFileSize / 1024 / 1024);
+        toast.error(`文件 [${oversized.name}] 超过大小限制，最大允许 ${sizeMB}MB`);
+        return;
+      }
     }
 
     const budgetValues: Record<string, string> = {};
@@ -1652,11 +1862,15 @@ function UploadDialog({ open, onOpenChange, onSubmit }: UploadDialogProps) {
           budgetValues, specSchema, noChunk)
       : undefined;
 
+    stopRef.current = false;
+    setStopping(false);
+    setProgress(values.sourceType === "file" ? { finished: 0, failed: 0, total: files.length } : null);
     setSaving(true);
     try {
       const payload: KnowledgeDocumentUploadPayload = {
         sourceType: values.sourceType,
-        file: values.sourceType === "file" ? file : null,
+        // 批量模式下 file 仅为占位（类型相关面板由第一个文件驱动），真实逐个上传在外层完成
+        file: values.sourceType === "file" ? files[0] : null,
         sourceLocation: values.sourceType === "url" ? values.sourceLocation?.trim() ?? null : null,
         scheduleEnabled: values.sourceType === "url" ? values.scheduleEnabled : false,
         scheduleCron:
@@ -1667,17 +1881,31 @@ function UploadDialog({ open, onOpenChange, onSubmit }: UploadDialogProps) {
         ingestionSpec: ingestionSpec ?? null,
         pipelineId: values.processMode === "pipeline" ? values.pipelineId : null
       };
-      await onSubmit(payload);
+      const leftover = await onSubmit(payload, files, {
+        onProgress: setProgress,
+        isStopped: () => stopRef.current
+      });
+      if (leftover.length > 0) {
+        updateFiles(leftover);
+      }
     } catch (error) {
       toast.error(getErrorMessage(error, "上传失败"));
       console.error(error);
     } finally {
       setSaving(false);
+      setProgress(null);
+      setStopping(false);
     }
   };
 
+  const stopUpload = () => {
+    stopRef.current = true;
+    setStopping(true);
+  };
+
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    // 上传进行中不允许点遮罩或右上角关闭，要中断请点「停止上传」
+    <Dialog open={open} onOpenChange={(next) => { if (!next && saving) return; onOpenChange(next); }}>
       <DialogContent
         className="max-h-[90vh] overflow-y-auto sidebar-scroll sm:max-w-[620px]"
         onOpenAutoFocus={(e) => e.preventDefault()}
@@ -1745,45 +1973,94 @@ function UploadDialog({ open, onOpenChange, onSubmit }: UploadDialogProps) {
                     className={cn(
                       "flex flex-col items-center justify-center gap-2 rounded-lg border-2 border-dashed p-6 cursor-pointer transition-colors select-none",
                       isDragging ? "border-primary bg-primary/5" : "border-muted-foreground/25 hover:border-primary/50 hover:bg-muted/50",
-                      file && !isDragging && "border-primary/40 bg-muted/30"
+                      files.length > 0 && !isDragging && "border-primary/40 bg-muted/30"
                     )}
-                    onClick={() => fileInputRef.current?.click()}
+                    onClick={() => { if (!saving) fileInputRef.current?.click(); }}
                     onDragOver={(e) => { e.preventDefault(); setIsDragging(true); }}
                     onDragLeave={(e) => { if (!e.currentTarget.contains(e.relatedTarget as Node)) setIsDragging(false); }}
                     onDrop={(e) => {
                       e.preventDefault();
                       setIsDragging(false);
-                      const dropped = e.dataTransfer.files[0];
-                      if (dropped) setFile(dropped);
+                      if (saving) return;
+                      // 必须在回调里同步取出：回调返回后 DataTransfer 就被清空
+                      const droppedFiles = Array.from(e.dataTransfer.files);
+                      const entries = Array.from(e.dataTransfer.items ?? [])
+                        .map((item) => (item.kind === "file" ? item.webkitGetAsEntry() : null))
+                        .filter((entry): entry is FileSystemEntry => entry !== null);
+                      if (!entries.some((entry) => entry.isDirectory)) {
+                        addFiles(droppedFiles);
+                        return;
+                      }
+                      setCollecting(true);
+                      collectDroppedFiles(entries)
+                        .then(addFiles)
+                        .catch((error) => {
+                          console.error(error);
+                          toast.error("读取拖入的文件夹失败");
+                        })
+                        .finally(() => setCollecting(false));
                     }}
                   >
                     <input
                       ref={fileInputRef}
                       type="file"
                       className="hidden"
-                      accept=".pdf,.md,.markdown,.doc,.docx,.txt,.xlsx,.xls,.csv,.png,.jpg,.jpeg,.svg"
-                      onChange={(e) => setFile(e.target.files?.[0] || null)}
+                      multiple
+                      accept={ACCEPTED_EXTENSIONS.join(",")}
+                      onChange={(e) => {
+                        addFiles(Array.from(e.target.files ?? []));
+                        e.target.value = "";
+                      }}
                     />
-                    {file ? (
+                    {files.length > 0 ? (
                       <>
-                        <FileUp className="h-7 w-7 text-primary" />
-                        <div className="text-sm font-medium text-center break-all px-2">{file.name}</div>
-                        <div className="text-xs text-muted-foreground">{formatSize(file.size)}</div>
+                        <FileUp className="h-7 w-7 text-primary shrink-0" />
+                        <div className="w-full space-y-1 max-h-48 overflow-y-auto sidebar-scroll">
+                          {files.slice(0, MAX_LISTED_FILES).map((f, idx) => (
+                            <div
+                              key={`${fileKey(f)}-${idx}`}
+                              className="flex items-center justify-between gap-2 rounded px-2 py-1 hover:bg-muted/70"
+                              onClick={(e) => e.stopPropagation()}
+                            >
+                              <span className="text-sm font-medium truncate min-w-0" title={f.name}>{f.name}</span>
+                              <span className="flex items-center gap-1 shrink-0">
+                                <span className="text-xs text-muted-foreground">{formatSize(f.size)}</span>
+                                <button
+                                  type="button"
+                                  className="inline-flex items-center justify-center rounded-full h-5 w-5 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                                  aria-label={`移除 ${f.name}`}
+                                  disabled={saving}
+                                  onClick={() => removeFileAt(idx)}
+                                >
+                                  <X className="h-3 w-3" />
+                                </button>
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                        <div className="text-xs text-muted-foreground">
+                          {files.length > MAX_LISTED_FILES ? `仅列出前 ${MAX_LISTED_FILES} 个 · ` : ""}
+                          共 {files.length} 个文件 · {formatSize(files.reduce((sum, f) => sum + f.size, 0))}
+                          {collecting ? " · 正在读取文件夹…" : ""}
+                        </div>
                         <Button
                           type="button"
                           variant="ghost"
                           size="sm"
                           className="h-7 px-2 text-xs text-muted-foreground hover:text-foreground"
-                          onClick={(e) => { e.stopPropagation(); setFile(null); if (fileInputRef.current) fileInputRef.current.value = ""; }}
+                          disabled={saving}
+                          onClick={(e) => { e.stopPropagation(); clearFiles(); }}
                         >
                           <X className="h-3 w-3 mr-1" />
-                          重新选择
+                          清空
                         </Button>
                       </>
                     ) : (
                       <>
                         <FileUp className="h-7 w-7 text-muted-foreground" />
-                        <div className="text-sm font-medium">拖拽文件到此处，或点击选择</div>
+                        <div className="text-sm font-medium">
+                          {collecting ? "正在读取文件夹…" : "拖拽文件或文件夹到此处，或点击选择（支持多选，不限数量）"}
+                        </div>
                         <div className="text-xs text-muted-foreground">支持 PDF、Markdown、Word、Excel、TXT、图片(PNG/JPG)等格式</div>
                       </>
                     )}
@@ -1986,11 +2263,21 @@ function UploadDialog({ open, onOpenChange, onSubmit }: UploadDialogProps) {
             </div>
 
             <DialogFooter>
-              <Button variant="outline" onClick={() => onOpenChange(false)} disabled={saving}>
-                取消
-              </Button>
-              <Button type="submit" disabled={saving}>
-                {saving ? "上传中..." : "上传"}
+              {saving && progress ? (
+                <Button type="button" variant="outline" onClick={stopUpload} disabled={stopping}>
+                  {stopping ? "正在停止…" : "停止上传"}
+                </Button>
+              ) : (
+                <Button variant="outline" onClick={() => onOpenChange(false)} disabled={saving}>
+                  取消
+                </Button>
+              )}
+              <Button type="submit" disabled={saving || collecting}>
+                {saving
+                  ? progress
+                    ? `上传中 ${progress.finished}/${progress.total}${progress.failed > 0 ? `（失败 ${progress.failed}）` : ""}`
+                    : "上传中..."
+                  : "上传"}
               </Button>
             </DialogFooter>
           </form>
