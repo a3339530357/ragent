@@ -17,11 +17,13 @@
 
 package com.nageoffer.ai.ragent.rag.config;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.nageoffer.ai.ragent.user.config.SaTokenConfig;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.converter.HttpMessageConverters;
 import org.springframework.http.converter.StringHttpMessageConverter;
+import org.springframework.http.converter.json.MappingJackson2HttpMessageConverter;
 import org.springframework.web.servlet.config.annotation.CorsRegistry;
 import org.springframework.web.servlet.config.annotation.InterceptorRegistry;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
@@ -49,6 +51,17 @@ public class RagentWebMvcConfiguration implements WebMvcConfigurer {
      */
     private final DemoModeInterceptor demoModeInterceptor;
 
+    /**
+     * Jackson 2 的 ObjectMapper，由 spring-boot-jackson2 兼容模块提供
+     *
+     * <p>
+     * 注意类型是 {@code com.fasterxml.jackson.databind.ObjectMapper}（Jackson 2），
+     * Boot 4 默认的 Jackson 3 对应类型是 {@code tools.jackson.databind.ObjectMapper}，
+     * 二者是不同的类，此处注入的是前者
+     * </p>
+     */
+    private final ObjectMapper objectMapper;
+
     @Override
     public void addInterceptors(InterceptorRegistry registry) {
         // 顺序介于登录与用户上下文之间，语义与原 SaTokenConfig 注册位置一致
@@ -62,8 +75,8 @@ public class RagentWebMvcConfiguration implements WebMvcConfigurer {
      * 自定义消息转换器配置
      *
      * <p>
-     * 这里通过 Spring Framework 7 的构建器替换默认 {@link StringHttpMessageConverter}，
-     * 不影响 JSON 等其他默认转换器
+     * 这里通过 Spring Framework 7 的构建器做两处替换：{@link StringHttpMessageConverter} 用于统一 UTF-8 编码，
+     * JSON 转换器则固定为 Jackson 2，其余默认转换器保持不变
      * </p>
      *
      * @param builder Spring MVC 消息转换器构建器
@@ -77,7 +90,13 @@ public class RagentWebMvcConfiguration implements WebMvcConfigurer {
         // 防止某些客户端或中间件对该头部解析不兼容
         stringConverter.setWriteAcceptCharset(false);
 
-        // 替换默认 String 转换器，同时保留 JSON 等其余默认转换器
+        // HTTP 边界的 JSON 转换器必须固定为 Jackson 2：业务侧的 DTO 字段（如 JsonNode）
+        // 与注入的 ObjectMapper 全量使用 Jackson 2 API，而 Boot 4 默认的 Jackson 3 转换器
+        // 构造不出 Jackson 2 的 JsonNode（抽象类、无可用构造器），会把请求体解成 500；
+        // spring-boot-jackson2 兼容模块只提供了 ObjectMapper Bean，不接管 HTTP 层，故在此显式替换
+        builder.withJsonConverter(new MappingJackson2HttpMessageConverter(objectMapper));
+
+        // 替换默认 String 与 JSON 转换器，其余默认转换器保持不变
         builder.withStringConverter(stringConverter);
     }
 
