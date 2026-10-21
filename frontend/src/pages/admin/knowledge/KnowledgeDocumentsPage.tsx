@@ -40,7 +40,8 @@ import { getSystemSettings } from "@/services/settingsService";
 import { DocumentPreview, isDocxType, isImageType, isPreviewableType, isSpreadsheetType } from "@/components/document/DocumentPreview";
 import { getErrorMessage } from "@/utils/error";
 
-const PAGE_SIZE = 10;
+const DEFAULT_PAGE_SIZE = 10;
+const PAGE_SIZE_OPTIONS = [10, 20, 50, 100, 500];
 
 const STATUS_OPTIONS = [
   { value: "pending", label: "pending" },
@@ -357,6 +358,14 @@ export function KnowledgeDocumentsPage() {
       state: { ...(location.state as object | null), page: value }
     });
   };
+  const pageSize = Math.max(1, Number((location.state as { size?: number } | null)?.size) || DEFAULT_PAGE_SIZE);
+  // 切换每页条数：一次导航同时写入 size 与 page=1（分两次 navigate 会用旧 state 互相覆盖），重查由 loadDocuments 依赖变化自动触发
+  const setPageSize = (next: number) => {
+    navigate(location.pathname, {
+      replace: true,
+      state: { ...(location.state as object | null), size: next, page: 1 }
+    });
+  };
   const [loading, setLoading] = useState(false);
   const [statusFilter, setStatusFilter] = useState<string | undefined>();
   const [keyword, setKeyword] = useState("");
@@ -466,13 +475,13 @@ export function KnowledgeDocumentsPage() {
     }
   }, [kbId]);
 
-  const loadDocuments = useCallback(async (page = current, status = statusFilter, keywordValue = keyword) => {
+  const loadDocuments = useCallback(async (page = current, status = statusFilter, keywordValue = keyword, sizeValue = pageSize) => {
     if (!kbId) return;
     setLoading(true);
     try {
       const data = await getDocumentsPage(kbId, {
         current: page,
-        size: PAGE_SIZE,
+        size: sizeValue,
         status,
         keyword: keywordValue || undefined
       });
@@ -483,7 +492,7 @@ export function KnowledgeDocumentsPage() {
     } finally {
       setLoading(false);
     }
-  }, [current, kbId, keyword, statusFilter]);
+  }, [current, kbId, keyword, pageSize, statusFilter]);
 
   useEffect(() => {
     loadKnowledgeBase();
@@ -972,6 +981,23 @@ export function KnowledgeDocumentsPage() {
             <div className="mt-4 flex flex-wrap items-center justify-between gap-2 text-sm text-slate-500">
               <span>共 {pageData.total} 条</span>
               <div className="flex items-center gap-2">
+                <div className="flex items-center gap-1">
+                  <span className="text-xs">每页</span>
+                  <Select value={String(pageSize)} onValueChange={(value) => {
+                    const next = Number(value);
+                    if (next !== pageSize) setPageSize(next);
+                  }}>
+                    <SelectTrigger className="h-8 w-[4.5rem]">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {PAGE_SIZE_OPTIONS.map((option) => (
+                        <SelectItem key={option} value={String(option)}>{option}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <span className="text-xs">条</span>
+                </div>
                 <Button variant="outline" size="sm" onClick={() => setCurrent((prev) => Math.max(1, prev - 1))} disabled={pageData.current <= 1}>
                   上一页
                 </Button>
