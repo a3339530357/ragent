@@ -1,10 +1,14 @@
 import * as React from "react";
 import { Virtuoso, type VirtuosoHandle } from "react-virtuoso";
+import { ChevronDown } from "lucide-react";
 
 import { AgentTurnItem } from "@/components/agent/AgentTurn";
 import { AgentWelcomeScreen } from "@/components/agent/AgentWelcomeScreen";
 import { cn } from "@/lib/utils";
 import type { AgentMessage, AgentTurn } from "@/types/agent";
+
+// 距底部小于该值视为「贴底」，流式输出只对贴底用户自动跟随
+const NEAR_BOTTOM_PX = 80;
 
 interface AgentMessageListProps {
   messages: AgentMessage[];
@@ -45,6 +49,30 @@ export function AgentMessageList({
   const settleTimerRef = React.useRef<number | null>(null);
   const heightScrollRafRef = React.useRef<number | null>(null);
   const prevStreamingRef = React.useRef(false);
+  // 贴底跟随：用户往上翻历史时流式输出不再强制拖回底部
+  const autoFollowRef = React.useRef(true);
+  const [showJumpButton, setShowJumpButton] = React.useState(false);
+  const handleScrollTrack = React.useCallback(() => {
+    const scroller = scrollerRef.current;
+    if (!scroller) return;
+    const nearBottom = scroller.scrollHeight - scroller.scrollTop - scroller.clientHeight < NEAR_BOTTOM_PX;
+    autoFollowRef.current = nearBottom;
+    // 布尔未翻转时不触发重渲染，滚动高频事件下保证零额外渲染
+    setShowJumpButton((prev) => (prev === !nearBottom ? prev : !nearBottom));
+  }, []);
+  const jumpToBottom = React.useCallback(() => {
+    autoFollowRef.current = true;
+    setShowJumpButton(false);
+    const virtuoso = virtuosoRef.current;
+    if (virtuoso) {
+      virtuoso.scrollToIndex({ index: "LAST", align: "end", behavior: "smooth" });
+      return;
+    }
+    const scroller = scrollerRef.current;
+    if (scroller) {
+      scroller.scrollTo({ top: scroller.scrollHeight, behavior: "smooth" });
+    }
+  }, []);
   const initialTopMostItemIndex = React.useMemo(
     () => ({ index: "LAST" as const, align: "end" as const }),
     []
@@ -82,18 +110,24 @@ export function AgentMessageList({
     const wasStreaming = prevStreamingRef.current;
     prevStreamingRef.current = isStreaming;
     if (!wasStreaming && isStreaming) {
+      // 新一轮回答开始：无条件回底（用户刚发完消息，理应看到回答）
+      autoFollowRef.current = true;
+      setShowJumpButton(false);
       stickToBottom();
       const timer = window.setTimeout(stickToBottom, 120);
       return () => window.clearTimeout(timer);
     }
     if (wasStreaming && !isStreaming) {
-      scrollToBottom();
-      const timer = window.setTimeout(scrollToBottom, 120);
-      const lateTimer = window.setTimeout(scrollToBottom, 360);
-      return () => {
-        window.clearTimeout(timer);
-        window.clearTimeout(lateTimer);
-      };
+      // 流结束的收尾贴底只在用户仍贴底时做，翻历史中被拽走会打断阅读
+      if (autoFollowRef.current) {
+        scrollToBottom();
+        const timer = window.setTimeout(scrollToBottom, 120);
+        const lateTimer = window.setTimeout(scrollToBottom, 360);
+        return () => {
+          window.clearTimeout(timer);
+          window.clearTimeout(lateTimer);
+        };
+      }
     }
     return;
   }, [isStreaming, stickToBottom, scrollToBottom]);
@@ -169,7 +203,8 @@ export function AgentMessageList({
     if (isLoading) {
       return;
     }
-    const shouldStick = isStreaming || pendingScrollRef.current;
+    // 流式中只对贴底用户跟随；切会话的落底（pendingScroll）不受贴底状态影响
+    const shouldStick = pendingScrollRef.current || (isStreaming && autoFollowRef.current);
     if (!shouldStick) return;
     if (heightScrollRafRef.current) {
       return;
@@ -235,7 +270,8 @@ export function AgentMessageList({
   }
 
   return (
-    <Virtuoso
+    <div className="relative h-full">
+      <Virtuoso
       key={sessionKey ?? "empty"}
       ref={virtuosoRef}
       data={turns}
@@ -243,7 +279,14 @@ export function AgentMessageList({
       // 贴底逻辑与工作流版一致：不启用 followOutput 由 streaming effect 与高度变化回调接管
       followOutput={false}
       scrollerRef={(node) => {
+        const prev = scrollerRef.current;
+        if (prev) {
+          prev.removeEventListener("scroll", handleScrollTrack);
+        }
         scrollerRef.current = node as HTMLElement | null;
+        if (node) {
+          node.addEventListener("scroll", handleScrollTrack, { passive: true });
+        }
       }}
       totalListHeightChanged={handleTotalListHeightChanged}
       className="agent-stream h-full"
@@ -258,6 +301,18 @@ export function AgentMessageList({
           <AgentTurnItem turn={turn} />
         </div>
       )}
-    />
+      />
+      {showJumpButton ? (
+        <button
+          type="button"
+          aria-label="回到底部"
+          title="回到底部"
+          onClick={jumpToBottom}
+          className="absolute bottom-4 right-4 z-10 inline-flex h-9 w-9 items-center justify-center rounded-full border bg-background/90 text-muted-foreground shadow-md backdrop-blur transition-colors hover:text-foreground"
+        >
+          <ChevronDown className="h-5 w-5" />
+        </button>
+      ) : null}
+    </div>
   );
 }
