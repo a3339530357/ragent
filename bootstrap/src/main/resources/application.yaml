@@ -46,8 +46,8 @@ agent:
       - name: default
         url: http://localhost:9099
   chat:
-    provider: deepseek   # 引用 ai.providers 下的供应商，取其 url / api-key / endpoints.chat
-    model: deepseek-flash    # 直接传给 OpenAI 兼容端点的模型名
+    provider: zhipu   # 引用 ai.providers 下的供应商，取其 url / api-key / endpoints.chat
+    model: glm-5.3    # 直接传给 OpenAI 兼容端点的模型名
   max-iters: 10
   max-retries: 1
   sse-timeout-ms: 900000
@@ -107,7 +107,7 @@ rag:
 
   default:
     collection-name: rag_default_store
-    dimension: 1536
+    dimension: 1024
     metric-type: COSINE
     sse-timeout-ms: 300000  # SSE 全局超时（毫秒），默认 5 分钟
 
@@ -203,8 +203,15 @@ rag:
 
 ai:
   providers:
-    ollama:
-      url: http://localhost:11434
+    zhipu:
+      # 走旧服务器自建 new-api（渠道3=GLM，OpenAI 兼容）；依赖旧机存活
+      url: http://103.236.97.137:20665
+      api-key: ${ZHIPU_API_KEY:}
+      endpoints:
+        chat: /v1/chat/completions
+    siliconflow:
+      url: https://api.siliconflow.cn
+      api-key: ${SILICONFLOW_API_KEY:}
       endpoints:
         chat: /v1/chat/completions
         embedding: /v1/embeddings
@@ -215,12 +222,6 @@ ai:
         chat: /compatible-mode/v1/chat/completions
         rerank: /api/v1/services/rerank/text-rerank/text-rerank
         embedding: /compatible-mode/v1/embeddings
-    aihubmix:
-      url: https://aihubmix.com
-      api-key: ${AIHUBMIX_API_KEY:}
-      endpoints:
-        chat: /v1/chat/completions
-        embedding: /v1/embeddings
     deepseek:
       url: https://api.deepseek.com
       api-key: ${DEEPSEEK_API_KEY:}
@@ -236,24 +237,13 @@ ai:
 
   chat:
     candidates:
-      - id: qwen-plus
-        provider: bailian
-        model: qwen-plus-latest
-      - id: qwen-flash
-        provider: bailian
-        model: qwen-flash
-      - id: qwen3-local
-        provider: ollama
-        model: qwen3:8b-fp16
-      - id: qwen3.8
-        provider: bailian
-        model: qwen3.8-27b
-      - id: gpt-6.1-sol
-        provider: aihubmix
-        model: gpt-6.1-sol
-      - id: deepseek-flash
-        provider: deepseek
-        model: deepseek-flash
+      - id: glm-5.3
+        provider: zhipu
+        model: glm-5.3
+        supports-thinking: true
+      - id: gemini-3.8-flash
+        provider: zhipu
+        model: gemini-3.8-flash
         supports-thinking: true
 
     default-tier: standard
@@ -261,45 +251,31 @@ ai:
 
     tiers:
       fast:
-        candidates: [ qwen-flash, qwen-plus, qwen3-local ]
-        timeout-ms: 5000
+        candidates: [ glm-5.3,gemini-3.8-flash]
+        timeout-ms: 8000
       standard:
-        candidates: [ qwen3.8, qwen-plus, deepseek-flash, qwen3-local ]
+        candidates: [ glm-5.3 ,gemini-3.8-flash]
         timeout-ms: 120000
       deep:
-        candidates: [ deepseek-flash ]
+        candidates: [ glm-5.3,gemini-3.8-flash]
         timeout-ms: 180000
 
   embedding:
-    default-model: qwen-emb-8b
+    default-model: bge-m3
     candidates:
-      - id: qwen-emb-8b
-        provider: bailian
-        model: text-embedding-v4
+      - id: bge-m3
+        provider: siliconflow
+        model: BAAI/bge-m3
         dimension: ${rag.default.dimension}
         priority: 1
-      - id: qwen-emb-local
-        provider: ollama
-        model: qwen3-embedding:8b-fp16
-        dimension: ${rag.default.dimension}
-        priority: 2
-      - id: text-embedding-3-large
-        provider: aihubmix
-        model: text-embedding-3-large
-        dimension: ${rag.default.dimension}
-        priority: 3
 
   rerank:
-    default-model: qwen3-rerank
+    default-model: qwen3.7-text-rerank
     candidates:
-      - id: qwen3-rerank
+      - id: qwen3.7-text-rerank
         provider: bailian
-        model: qwen3-rerank
+        model: qwen3.7-text-rerank
         priority: 1
-      - id: rerank-noop
-        provider: noop
-        model: noop
-        priority: 100
 
   vlm:
     default-model: qwen-vl-max

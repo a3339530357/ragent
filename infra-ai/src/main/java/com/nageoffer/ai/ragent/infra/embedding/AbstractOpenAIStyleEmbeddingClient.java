@@ -129,7 +129,7 @@ public abstract class AbstractOpenAIStyleEmbeddingClient implements EmbeddingCli
             inputArray.add(text);
         }
         body.add("input", inputArray);
-        body.addProperty("dimensions", target.candidate().getDimension());
+        // body.addProperty("dimensions", target.candidate().getDimension());
         customizeRequestBody(body, target);
 
         Request.Builder requestBuilder = new Request.Builder()
@@ -149,12 +149,12 @@ public abstract class AbstractOpenAIStyleEmbeddingClient implements EmbeddingCli
             if (!response.isSuccessful()) {
                 String errBody = HttpResponseHelper.readBody(response.body());
                 log.warn("{} embedding 请求失败 - 模型：{}，条数：{}，耗时：{}ms，status={}, body={}",
-                        provider(), model, texts.size(), System.currentTimeMillis() - startTime, response.code(), errBody);
+                        provider(), model, texts.size(), System.currentTimeMillis() - startTime, response.code(),
+                        errBody);
                 throw new ModelClientException(
                         provider() + " embedding 请求失败: HTTP " + response.code(),
                         ModelClientErrorType.fromHttpStatus(response.code()),
-                        response.code()
-                );
+                        response.code());
             }
             json = HttpResponseHelper.parseJson(response.body(), provider());
         } catch (IOException e) {
