@@ -22,9 +22,9 @@ import cn.hutool.json.JSONArray;
 import cn.hutool.json.JSONObject;
 import cn.hutool.json.JSONUtil;
 import com.nageoffer.ai.ragent.agent.config.AgentProperties;
+import com.nageoffer.ai.ragent.agent.config.AgentThinkingOptions;
 import com.nageoffer.ai.ragent.agent.config.ConditionalOnAgentEngine;
 import com.nageoffer.ai.ragent.agent.dao.entity.AgentMessageDO;
-import com.nageoffer.ai.ragent.infra.enums.ModelProvider;
 import com.nageoffer.ai.ragent.infra.util.LLMResponseCleaner;
 import com.nageoffer.ai.ragent.rag.core.prompt.AgentPromptResolver;
 import com.nageoffer.ai.ragent.rag.core.prompt.AgentPromptSlot;
@@ -73,6 +73,7 @@ public class AgentMemoryJudge {
     private final AgentProperties agentProperties;
     private final AgentPromptResolver agentPromptResolver;
     private final AgentMemoryProperties memoryProperties;
+    private final AgentThinkingOptions agentThinkingOptions;
 
     /**
      * 判不出东西返回空列表，判失败一律抛出交由调用方结算
@@ -115,10 +116,8 @@ public class AgentMemoryJudge {
                         .timeout(JUDGE_TIMEOUT)
                         .maxAttempts(agentProperties.getMaxRetries())
                         .build());
-        // 只给 DeepSeek 显式关闭思考，其他供应商不发送该字段
-        if (ModelProvider.DEEP_SEEK.matches(agentProperties.getChat().getProvider())) {
-            options.additionalBodyParam("thinking", Map.of("type", "disabled"));
-        }
+        // 按供应商方言显式关闭思考：多数模型默认开思考，不关会白等一段推理；方言不明的供应商不发任何字段
+        agentThinkingOptions.disable(options);
         return options.build();
     }
 

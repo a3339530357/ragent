@@ -18,6 +18,9 @@
 package com.nageoffer.ai.ragent.agent.memory;
 
 import com.nageoffer.ai.ragent.agent.config.AgentProperties;
+import com.nageoffer.ai.ragent.agent.config.AgentThinkingOptions;
+import com.nageoffer.ai.ragent.infra.config.AIModelProperties;
+import com.nageoffer.ai.ragent.infra.enums.ThinkingParam;
 import com.nageoffer.ai.ragent.agent.dao.entity.AgentMessageDO;
 import com.nageoffer.ai.ragent.agent.memory.AgentMemoryDecision.Action;
 import com.nageoffer.ai.ragent.rag.core.prompt.AgentPromptResolver;
@@ -57,6 +60,7 @@ class AgentMemoryJudgeTest {
 
     private Model model;
     private AgentProperties agentProperties;
+    private AIModelProperties aiModelProperties;
     private AgentMemoryProperties memoryProperties;
     private AgentPromptResolver promptResolver;
     private AgentMemoryJudge judge;
@@ -65,11 +69,13 @@ class AgentMemoryJudgeTest {
     void setUp() {
         model = mock(Model.class);
         agentProperties = new AgentProperties();
+        aiModelProperties = new AIModelProperties();
         agentProperties.getChat().setProvider("deepseek");
         memoryProperties = new AgentMemoryProperties();
         promptResolver = mock(AgentPromptResolver.class);
         when(promptResolver.render(eq(AgentPromptSlot.AGENT_MEMORY_EXTRACTION), anyMap())).thenReturn("抽取提示词");
-        judge = new AgentMemoryJudge(model, agentProperties, promptResolver, memoryProperties);
+        judge = new AgentMemoryJudge(model, agentProperties, promptResolver, memoryProperties,
+                new AgentThinkingOptions(agentProperties, aiModelProperties));
     }
 
     @Test
@@ -166,13 +172,45 @@ class AgentMemoryJudgeTest {
     }
 
     @Test
-    void shouldNotSendThinkingParamToOtherProviders() {
+    void shouldDisableThinkingWithEnableThinkingFlagForBaiLian() {
         agentProperties.getChat().setProvider("bailian");
         answer("[]");
 
         judge.judge(List.of(), ONE_TURN);
 
-        assertThat(captureOptions().getAdditionalBodyParams()).doesNotContainKey("thinking");
+        GenerateOptions options = captureOptions();
+        assertThat(options.getAdditionalBodyParams()).containsEntry("enable_thinking", false).doesNotContainKey("thinking");
+        assertThat(options.getReasoningEffort()).isNull();
+    }
+
+    /**
+     * new-api 这类网关只认 reasoning_effort，thinking 对象与 enable_thinking 会在协议转换中被丢掉
+     */
+    @Test
+    void shouldDisableThinkingWithReasoningEffortWhenProviderDeclaresIt() {
+        AIModelProperties.ProviderConfig gateway = new AIModelProperties.ProviderConfig();
+        gateway.setThinkingParam(ThinkingParam.REASONING_EFFORT);
+        aiModelProperties.setProviders(Map.of("zhipu", gateway));
+        agentProperties.getChat().setProvider("zhipu");
+        answer("[]");
+
+        judge.judge(List.of(), ONE_TURN);
+
+        GenerateOptions options = captureOptions();
+        assertThat(options.getReasoningEffort()).isEqualTo("none");
+        assertThat(options.getAdditionalBodyParams()).doesNotContainKeys("thinking", "enable_thinking");
+    }
+
+    @Test
+    void shouldNotSendThinkingParamToUndeclaredProviders() {
+        agentProperties.getChat().setProvider("brand-new-gateway");
+        answer("[]");
+
+        judge.judge(List.of(), ONE_TURN);
+
+        GenerateOptions options = captureOptions();
+        assertThat(options.getReasoningEffort()).isNull();
+        assertThat(options.getAdditionalBodyParams()).doesNotContainKeys("thinking", "enable_thinking");
     }
 
     @Test

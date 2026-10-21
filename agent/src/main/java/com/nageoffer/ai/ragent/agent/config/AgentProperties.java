@@ -18,6 +18,7 @@
 package com.nageoffer.ai.ragent.agent.config;
 
 import com.nageoffer.ai.ragent.framework.web.StreamTaskManager;
+import com.nageoffer.ai.ragent.infra.enums.ThinkingEffort;
 import jakarta.validation.constraints.AssertTrue;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotNull;
@@ -79,5 +80,12 @@ public class AgentProperties {
          * 直接传给 OpenAI 兼容端点的模型名
          */
         private String model;
+
+        /**
+         * 主 Agent 思考强度：off / low / medium / high；不填则不发思考字段，由模型默认决定
+         * <p>
+         * 只影响主对话循环；记忆仲裁、对话摘要等后台调用始终关闭思考
+         */
+        private ThinkingEffort thinkingEffort;
     }
 }

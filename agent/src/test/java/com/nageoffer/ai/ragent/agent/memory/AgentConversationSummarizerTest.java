@@ -18,6 +18,9 @@
 package com.nageoffer.ai.ragent.agent.memory;
 
 import com.nageoffer.ai.ragent.agent.config.AgentProperties;
+import com.nageoffer.ai.ragent.agent.config.AgentThinkingOptions;
+import com.nageoffer.ai.ragent.infra.config.AIModelProperties;
+import com.nageoffer.ai.ragent.infra.enums.ThinkingParam;
 import com.nageoffer.ai.ragent.rag.core.prompt.AgentPromptResolver;
 import com.nageoffer.ai.ragent.rag.core.prompt.AgentPromptSlot;
 import io.agentscope.core.message.ContentBlock;
@@ -61,6 +64,7 @@ class AgentConversationSummarizerTest {
     private Model model;
     private AgentPromptResolver promptResolver;
     private AgentProperties agentProperties;
+    private AIModelProperties aiModelProperties;
     private AgentMemoryProperties memoryProperties;
     private AgentConversationSummarizer summarizer;
 
@@ -68,13 +72,15 @@ class AgentConversationSummarizerTest {
     void setUp() {
         model = mock(Model.class);
         agentProperties = new AgentProperties();
+        aiModelProperties = new AIModelProperties();
         agentProperties.getChat().setProvider("deepseek");
         promptResolver = mock(AgentPromptResolver.class);
         when(promptResolver.render(eq(AgentPromptSlot.AGENT_CONTEXT_COMPACTION), anyMap()))
                 .thenReturn("按小节输出会话摘要");
         memoryProperties = new AgentMemoryProperties();
         memoryProperties.setContextWindowChars(20_000);
-        summarizer = new AgentConversationSummarizer(model, agentProperties, promptResolver, memoryProperties);
+        summarizer = new AgentConversationSummarizer(model, agentProperties, promptResolver, memoryProperties,
+                new AgentThinkingOptions(agentProperties, aiModelProperties));
     }
 
     @Test
@@ -276,13 +282,45 @@ class AgentConversationSummarizerTest {
     }
 
     @Test
-    void shouldNotSendThinkingParamToOtherProviders() {
+    void shouldDisableThinkingWithEnableThinkingFlagForBaiLian() {
         agentProperties.getChat().setProvider("bailian");
         answer("邮件已起草，尚未发出");
 
         summarizer.summarize(MATERIAL, null);
 
-        assertThat(captureOptions().getAdditionalBodyParams()).doesNotContainKey("thinking");
+        GenerateOptions options = captureOptions();
+        assertThat(options.getAdditionalBodyParams()).containsEntry("enable_thinking", false).doesNotContainKey("thinking");
+        assertThat(options.getReasoningEffort()).isNull();
+    }
+
+    /**
+     * new-api 这类网关只认 reasoning_effort，thinking 对象与 enable_thinking 会在协议转换中被丢掉
+     */
+    @Test
+    void shouldDisableThinkingWithReasoningEffortWhenProviderDeclaresIt() {
+        AIModelProperties.ProviderConfig gateway = new AIModelProperties.ProviderConfig();
+        gateway.setThinkingParam(ThinkingParam.REASONING_EFFORT);
+        aiModelProperties.setProviders(Map.of("zhipu", gateway));
+        agentProperties.getChat().setProvider("zhipu");
+        answer("邮件已起草，尚未发出");
+
+        summarizer.summarize(MATERIAL, null);
+
+        GenerateOptions options = captureOptions();
+        assertThat(options.getReasoningEffort()).isEqualTo("none");
+        assertThat(options.getAdditionalBodyParams()).doesNotContainKeys("thinking", "enable_thinking");
+    }
+
+    @Test
+    void shouldNotSendThinkingParamToUndeclaredProviders() {
+        agentProperties.getChat().setProvider("brand-new-gateway");
+        answer("邮件已起草，尚未发出");
+
+        summarizer.summarize(MATERIAL, null);
+
+        GenerateOptions options = captureOptions();
+        assertThat(options.getReasoningEffort()).isNull();
+        assertThat(options.getAdditionalBodyParams()).doesNotContainKeys("thinking", "enable_thinking");
     }
 
     private GenerateOptions captureOptions() {

@@ -48,6 +48,7 @@ agent:
   chat:
     provider: zhipu   # 引用 ai.providers 下的供应商，取其 url / api-key / endpoints.chat
     model: glm-5.3    # 直接传给 OpenAI 兼容端点的模型名
+    # thinking-effort: low   # 主 Agent 思考强度 "off" / low / medium / high（off 必须带引号，裸 off 会被 YAML 读成 false）；不填=不发字段、模型默认（glm/gemini 默认都会思考）
   max-iters: 10
   max-retries: 1
   sse-timeout-ms: 900000
@@ -209,6 +210,8 @@ ai:
       api-key: ${ZHIPU_API_KEY:}
       endpoints:
         chat: /v1/chat/completions
+      # new-api 只认 reasoning_effort（none 关 / low / medium / high），thinking 对象与 enable_thinking 会在协议转换中被丢掉
+      thinking-param: reasoning-effort
     siliconflow:
       url: https://api.siliconflow.cn
       api-key: ${SILICONFLOW_API_KEY:}

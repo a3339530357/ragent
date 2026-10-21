@@ -19,6 +19,8 @@ package com.nageoffer.ai.ragent.agent.memory;
 
 import com.nageoffer.ai.ragent.agent.dao.mapper.AgentContextCompactionMapper;
 import com.nageoffer.ai.ragent.agent.config.AgentProperties;
+import com.nageoffer.ai.ragent.agent.config.AgentThinkingOptions;
+import com.nageoffer.ai.ragent.infra.config.AIModelProperties;
 import com.nageoffer.ai.ragent.rag.core.prompt.AgentPromptResolver;
 import com.nageoffer.ai.ragent.rag.core.prompt.AgentPromptSlot;
 import io.agentscope.core.message.Msg;
@@ -81,8 +83,10 @@ class AgentContextCompactorTest {
         when(promptResolver.render(eq(AgentPromptSlot.AGENT_CONTEXT_COMPACTION), anyMap()))
                 .thenReturn("按小节输出会话摘要");
         AgentContextCompactionMapper compactionMapper = mock(AgentContextCompactionMapper.class);
+        AgentProperties agentProperties = new AgentProperties();
         AgentConversationSummarizer summarizer =
-                new AgentConversationSummarizer(model, new AgentProperties(), promptResolver, memoryProperties);
+                new AgentConversationSummarizer(model, agentProperties, promptResolver, memoryProperties,
+                        new AgentThinkingOptions(agentProperties, new AIModelProperties()));
         AgentContextCompactor compactor =
                 new AgentContextCompactor(summarizer, memoryProperties, compactionMapper);
         List<Msg> context = new ArrayList<>(List.of(
@@ -224,8 +228,10 @@ class AgentContextCompactorTest {
         Model model = mock(Model.class);
         AgentPromptResolver promptResolver = mock(AgentPromptResolver.class);
         AgentContextCompactionMapper compactionMapper = mock(AgentContextCompactionMapper.class);
+        AgentProperties agentProperties = new AgentProperties();
         AgentConversationSummarizer realSummarizer =
-                new AgentConversationSummarizer(model, new AgentProperties(), promptResolver, memoryProperties);
+                new AgentConversationSummarizer(model, agentProperties, promptResolver, memoryProperties,
+                        new AgentThinkingOptions(agentProperties, new AIModelProperties()));
         AgentContextCompactor realCompactor =
                 new AgentContextCompactor(realSummarizer, memoryProperties, compactionMapper);
 

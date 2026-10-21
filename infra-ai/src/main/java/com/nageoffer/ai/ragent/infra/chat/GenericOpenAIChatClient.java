@@ -17,8 +17,11 @@
 
 package com.nageoffer.ai.ragent.infra.chat;
 
+import com.google.gson.JsonObject;
 import com.nageoffer.ai.ragent.framework.convention.ChatRequest;
 import com.nageoffer.ai.ragent.framework.trace.RagTraceNode;
+import com.nageoffer.ai.ragent.infra.enums.ThinkingEffort;
+import com.nageoffer.ai.ragent.infra.enums.ThinkingParam;
 import com.nageoffer.ai.ragent.infra.model.ModelTarget;
 import lombok.extern.slf4j.Slf4j;
 
@@ -33,6 +36,23 @@ public class GenericOpenAIChatClient extends AbstractOpenAIStyleChatClient {
     @Override
     public String provider() {
         return providerName;
+    }
+
+    /**
+     * 按 {@code ai.providers.<name>.thinking-param} 声明的方言表达思考开关
+     * <p>
+     * 未声明方言则一律不发，与基类「新供应商默认不认识私有字段」的约定一致；
+     * 要求思考时只表态「开」、不指定强度，强度交给模型默认
+     */
+    @Override
+    protected JsonObject buildRequestBody(ChatRequest request, ModelTarget target, boolean stream) {
+        JsonObject body = super.buildRequestBody(request, target, stream);
+        ThinkingParam thinkingParam = target.provider() == null ? null : target.provider().getThinkingParam();
+        if (thinkingParam != null) {
+            ThinkingEffort effort = Boolean.TRUE.equals(request.getThinking()) ? null : ThinkingEffort.OFF;
+            thinkingParam.bodyParams(effort).forEach((key, value) -> body.add(key, gson.toJsonTree(value)));
+        }
+        return body;
     }
 
     @Override

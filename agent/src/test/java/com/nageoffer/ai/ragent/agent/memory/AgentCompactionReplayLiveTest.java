@@ -20,6 +20,7 @@ package com.nageoffer.ai.ragent.agent.memory;
 import cn.hutool.core.util.StrUtil;
 import com.nageoffer.ai.ragent.agent.config.AgentEngineConfiguration;
 import com.nageoffer.ai.ragent.agent.config.AgentProperties;
+import com.nageoffer.ai.ragent.agent.config.AgentThinkingOptions;
 import com.nageoffer.ai.ragent.agent.dao.mapper.AgentContextCompactionMapper;
 import com.nageoffer.ai.ragent.infra.config.AIModelProperties;
 import com.nageoffer.ai.ragent.rag.core.prompt.AgentPromptResolver;
@@ -94,6 +95,7 @@ class AgentCompactionReplayLiveTest {
                         agent.getChat().getProvider())
                 .isNotBlank();
         Model model = new AgentEngineConfiguration(agent, ai).agentChatModel();
+        AgentThinkingOptions thinking = new AgentThinkingOptions(agent, ai);
         AgentPromptResolver resolver = mock(AgentPromptResolver.class, CALLS_REAL_METHODS);
         doReturn(prompt).when(resolver).resolve(AgentPromptSlot.AGENT_CONTEXT_COMPACTION);
 
@@ -111,7 +113,7 @@ class AgentCompactionReplayLiveTest {
         for (Path session : sessions) {
             for (int round = 1; round <= repeat; round++) {
                 String name = session.getFileName() + (round == 1 ? "" : "-r" + round);
-                Chain chain = new Chain(session, target.resolve(name), model, agent, resolver, memory);
+                Chain chain = new Chain(session, target.resolve(name), model, agent, resolver, memory, thinking);
                 chains.put(name, pool.submit(chain::run));
             }
         }
@@ -145,10 +147,10 @@ class AgentCompactionReplayLiveTest {
         private final AgentContextCompactor compactor;
 
         Chain(Path session, Path out, Model model, AgentProperties agent, AgentPromptResolver resolver,
-              AgentMemoryProperties memory) {
+              AgentMemoryProperties memory, AgentThinkingOptions thinking) {
             this.session = session;
             this.out = out;
-            this.summarizer = new RecordingSummarizer(model, agent, resolver, memory);
+            this.summarizer = new RecordingSummarizer(model, agent, resolver, memory, thinking);
             this.compactor = new AgentContextCompactor(summarizer, memory, mock(AgentContextCompactionMapper.class));
         }
 
@@ -236,8 +238,8 @@ class AgentCompactionReplayLiveTest {
         private String summary;
 
         RecordingSummarizer(Model model, AgentProperties agent, AgentPromptResolver resolver,
-                            AgentMemoryProperties memory) {
-            super(model, agent, resolver, memory);
+                            AgentMemoryProperties memory, AgentThinkingOptions thinking) {
+            super(model, agent, resolver, memory, thinking);
         }
 
         @Override
