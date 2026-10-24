@@ -21,6 +21,8 @@ import cn.hutool.core.util.StrUtil;
 import com.nageoffer.ai.ragent.agent.dao.mapper.AgentStateMapper;
 import com.nageoffer.ai.ragent.agent.state.PgAgentStateStore;
 import com.nageoffer.ai.ragent.infra.config.AIModelProperties;
+import com.nageoffer.ai.ragent.infra.debug.ModelRequestDumpProperties;
+import com.nageoffer.ai.ragent.infra.debug.ModelRequestDumpWriter;
 import com.nageoffer.ai.ragent.infra.enums.ModelProvider;
 import io.agentscope.core.model.GenerateOptions;
 import io.agentscope.extensions.model.openai.OpenAIChatModel;
@@ -41,9 +43,15 @@ public class AgentEngineConfiguration {
 
     private final AgentProperties agentProperties;
     private final AIModelProperties aiModelProperties;
+    private final ModelRequestDumpProperties requestDumpProperties;
+    private final ModelRequestDumpWriter requestDumpWriter;
 
     @Bean
     public OpenAIChatModel agentChatModel() {
+        if (requestDumpProperties.isEnabled()) {
+            // 必须在首个 AgentScope 模型客户端构造前挂上 dump transport，此处是引擎装配最早的时机
+            AgentScopeDumpTransport.install(requestDumpWriter);
+        }
         AgentProperties.Chat chat = agentProperties.getChat();
         if (chat == null || StrUtil.isBlank(chat.getProvider()) || StrUtil.isBlank(chat.getModel())) {
             throw new IllegalStateException("agent.chat.provider / agent.chat.model 未配置");

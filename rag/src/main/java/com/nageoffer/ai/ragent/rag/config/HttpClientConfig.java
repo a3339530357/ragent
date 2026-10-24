@@ -17,6 +17,9 @@
 
 package com.nageoffer.ai.ragent.rag.config;
 
+import com.nageoffer.ai.ragent.infra.debug.ModelRequestDumpInterceptor;
+import com.nageoffer.ai.ragent.infra.debug.ModelRequestDumpProperties;
+import com.nageoffer.ai.ragent.infra.debug.ModelRequestDumpWriter;
 import okhttp3.OkHttpClient;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -30,19 +33,32 @@ import java.time.Duration;
 @Configuration
 public class HttpClientConfig {
 
+    private final ModelRequestDumpProperties requestDumpProperties;
+
+    private final ModelRequestDumpWriter requestDumpWriter;
+
+    public HttpClientConfig(ModelRequestDumpProperties requestDumpProperties,
+                            ModelRequestDumpWriter requestDumpWriter) {
+        this.requestDumpProperties = requestDumpProperties;
+        this.requestDumpWriter = requestDumpWriter;
+    }
+
     /**
      * 流式 HTTP 客户端（Primary）
      */
     @Bean
     @Primary
     public OkHttpClient streamingHttpClient() {
-        return new OkHttpClient.Builder()
+        OkHttpClient.Builder builder = new OkHttpClient.Builder()
                 .connectTimeout(Duration.ofSeconds(30))
                 .writeTimeout(Duration.ofSeconds(60))
                 .readTimeout(Duration.ZERO)
                 .callTimeout(Duration.ZERO)
-                .retryOnConnectionFailure(true)
-                .build();
+                .retryOnConnectionFailure(true);
+        if (requestDumpProperties.isEnabled()) {
+            builder.addInterceptor(new ModelRequestDumpInterceptor(requestDumpWriter));
+        }
+        return builder.build();
     }
 
     /**
@@ -50,12 +66,15 @@ public class HttpClientConfig {
      */
     @Bean
     public OkHttpClient syncHttpClient() {
-        return new OkHttpClient.Builder()
+        OkHttpClient.Builder builder = new OkHttpClient.Builder()
                 .connectTimeout(Duration.ofSeconds(10))
                 .writeTimeout(Duration.ofSeconds(30))
                 .readTimeout(Duration.ofSeconds(30))
                 .callTimeout(Duration.ofSeconds(45))
-                .retryOnConnectionFailure(true)
-                .build();
+                .retryOnConnectionFailure(true);
+        if (requestDumpProperties.isEnabled()) {
+            builder.addInterceptor(new ModelRequestDumpInterceptor(requestDumpWriter));
+        }
+        return builder.build();
     }
 }

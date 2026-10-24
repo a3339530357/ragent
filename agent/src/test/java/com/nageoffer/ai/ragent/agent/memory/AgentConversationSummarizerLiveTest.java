@@ -21,6 +21,8 @@ import com.nageoffer.ai.ragent.agent.config.AgentEngineConfiguration;
 import com.nageoffer.ai.ragent.agent.config.AgentProperties;
 import com.nageoffer.ai.ragent.agent.config.AgentThinkingOptions;
 import com.nageoffer.ai.ragent.infra.config.AIModelProperties;
+import com.nageoffer.ai.ragent.infra.debug.ModelRequestDumpProperties;
+import com.nageoffer.ai.ragent.infra.debug.ModelRequestDumpWriter;
 import com.nageoffer.ai.ragent.rag.core.prompt.AgentPromptResolver;
 import com.nageoffer.ai.ragent.rag.core.prompt.AgentPromptSlot;
 import io.agentscope.core.message.Msg;
@@ -84,7 +86,8 @@ class AgentConversationSummarizerLiveTest {
         provider.setEndpoints(Map.of("chat", "/v1/chat/completions"));
         AIModelProperties models = new AIModelProperties();
         models.setProviders(Map.of("deepseek", provider));
-        model = spy(new AgentEngineConfiguration(properties, models).agentChatModel());
+        model = spy(new AgentEngineConfiguration(properties, models, new ModelRequestDumpProperties(),
+                new ModelRequestDumpWriter("logs/test-request-dump.log")).agentChatModel());
 
         String prompt = Files.readString(repositoryRoot().resolve(
                 "resources/initializer/bit-selection/prompts/context-compaction.txt"));

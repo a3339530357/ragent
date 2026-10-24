@@ -23,6 +23,8 @@ import com.nageoffer.ai.ragent.agent.config.AgentProperties;
 import com.nageoffer.ai.ragent.agent.config.AgentThinkingOptions;
 import com.nageoffer.ai.ragent.agent.dao.mapper.AgentContextCompactionMapper;
 import com.nageoffer.ai.ragent.infra.config.AIModelProperties;
+import com.nageoffer.ai.ragent.infra.debug.ModelRequestDumpProperties;
+import com.nageoffer.ai.ragent.infra.debug.ModelRequestDumpWriter;
 import com.nageoffer.ai.ragent.rag.core.prompt.AgentPromptResolver;
 import com.nageoffer.ai.ragent.rag.core.prompt.AgentPromptSlot;
 import io.agentscope.core.message.Msg;
@@ -94,7 +96,8 @@ class AgentCompactionReplayLiveTest {
                 .as("agent.chat 指向的供应商 %s 没有 api-key：先 export application.yaml 里它引用的那个环境变量",
                         agent.getChat().getProvider())
                 .isNotBlank();
-        Model model = new AgentEngineConfiguration(agent, ai).agentChatModel();
+        Model model = new AgentEngineConfiguration(agent, ai, new ModelRequestDumpProperties(),
+                new ModelRequestDumpWriter("logs/test-request-dump.log")).agentChatModel();
         AgentThinkingOptions thinking = new AgentThinkingOptions(agent, ai);
         AgentPromptResolver resolver = mock(AgentPromptResolver.class, CALLS_REAL_METHODS);
         doReturn(prompt).when(resolver).resolve(AgentPromptSlot.AGENT_CONTEXT_COMPACTION);
