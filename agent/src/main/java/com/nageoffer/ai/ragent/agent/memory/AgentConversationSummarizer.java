@@ -21,6 +21,7 @@ import cn.hutool.core.util.StrUtil;
 import com.nageoffer.ai.ragent.agent.config.AgentProperties;
 import com.nageoffer.ai.ragent.agent.config.AgentThinkingOptions;
 import com.nageoffer.ai.ragent.agent.config.ConditionalOnAgentEngine;
+import com.nageoffer.ai.ragent.framework.convention.ModelCallType;
 import com.nageoffer.ai.ragent.rag.core.prompt.AgentPromptResolver;
 import com.nageoffer.ai.ragent.rag.core.prompt.AgentPromptSlot;
 import io.agentscope.core.message.ContentBlock;
@@ -141,6 +142,7 @@ public class AgentConversationSummarizer {
                         .build());
         // 按供应商方言显式关闭思考：多数模型默认开思考，不关会白等一段推理；方言不明的供应商不发任何字段
         agentThinkingOptions.disable(options);
+        options.additionalHeader(ModelCallType.HEADER, ModelCallType.AGENT_SUMMARY.name());
         return options.build();
     }
 

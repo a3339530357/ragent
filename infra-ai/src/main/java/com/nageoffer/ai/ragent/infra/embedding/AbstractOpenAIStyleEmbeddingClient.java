@@ -21,6 +21,7 @@ import cn.hutool.core.collection.CollUtil;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
+import com.nageoffer.ai.ragent.framework.convention.ModelCallType;
 import com.nageoffer.ai.ragent.infra.config.AIModelProperties;
 import com.nageoffer.ai.ragent.infra.enums.ModelCapability;
 import com.nageoffer.ai.ragent.infra.http.HttpMediaTypes;
@@ -134,7 +135,8 @@ public abstract class AbstractOpenAIStyleEmbeddingClient implements EmbeddingCli
 
         Request.Builder requestBuilder = new Request.Builder()
                 .url(url)
-                .post(RequestBody.create(body.toString(), HttpMediaTypes.JSON));
+                .post(RequestBody.create(body.toString(), HttpMediaTypes.JSON))
+                .tag(ModelCallType.class, ModelCallType.EMBEDDING);
         if (requiresApiKey()) {
             requestBuilder.addHeader("Authorization", "Bearer " + provider.getApiKey());
         }

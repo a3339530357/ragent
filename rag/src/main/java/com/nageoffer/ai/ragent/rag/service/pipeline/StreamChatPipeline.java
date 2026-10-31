@@ -21,6 +21,7 @@ import cn.hutool.core.collection.CollUtil;
 import cn.hutool.core.util.StrUtil;
 import com.nageoffer.ai.ragent.framework.convention.ChatMessage;
 import com.nageoffer.ai.ragent.framework.convention.ChatRequest;
+import com.nageoffer.ai.ragent.framework.convention.ModelCallType;
 import com.nageoffer.ai.ragent.framework.convention.SourceRef;
 import com.nageoffer.ai.ragent.infra.chat.LLMService;
 import com.nageoffer.ai.ragent.infra.chat.StreamCallback;
@@ -210,6 +211,7 @@ public class StreamChatPipeline {
                 .messages(messages)
                 .temperature(0.7D)
                 .thinking(false)
+                .callType(ModelCallType.SYSTEM_CHAT)
                 .build();
         return llmService.streamChat(req, callback);
     }
@@ -235,6 +237,7 @@ public class StreamChatPipeline {
                 .thinking(deepThinking)
                 .temperature(0D)
                 .topP(1D)
+                .callType(ModelCallType.MAIN_CHAT)
                 .build();
 
         return llmService.streamChat(chatRequest, callback);

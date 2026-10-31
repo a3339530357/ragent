@@ -25,7 +25,7 @@ import org.springframework.context.annotation.Configuration;
 
 /**
  * 模型请求 dump 装配。
- * 写入器无条件注册（构造只建目录、不产生 IO），是否真正落盘由
+ * 写入器无条件注册（构造不产生 IO，目录在首次写入时创建），是否真正落盘由
  * {@link ModelRequestDumpProperties#isEnabled()} 在各挂载点判断——
  * 这样关闭开关时消费方注入不受影响。
  */
@@ -35,6 +35,6 @@ public class ModelRequestDumpConfiguration {
 
     @Bean
     public ModelRequestDumpWriter modelRequestDumpWriter(ModelRequestDumpProperties properties) {
-        return new ModelRequestDumpWriter(properties.getFile());
+        return new ModelRequestDumpWriter(properties.getDir());
     }
 }

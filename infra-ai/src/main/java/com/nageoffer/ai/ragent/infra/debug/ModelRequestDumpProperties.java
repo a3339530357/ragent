@@ -22,7 +22,7 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 
 /**
  * 模型请求全量 dump 配置：开启后，Agent 引擎（AgentScope）与自研 OkHttp 客户端发出的每一次模型请求
- * 都会把完整请求头与请求体落盘，用于排查鉴权、参数拼装等问题。
+ * 都会把完整请求头、请求体与返回落盘（按调用类型分目录、一次请求一个文件），用于排查鉴权、参数拼装等问题。
  */
 @Data
 @ConfigurationProperties(prefix = "ai.request-dump")
@@ -34,7 +34,7 @@ public class ModelRequestDumpProperties {
     private boolean enabled = false;
 
     /**
-     * dump 落盘文件路径（相对后端进程工作目录）
+     * dump 根目录（相对后端进程工作目录）；其下按调用类型分子目录，每次请求一个文件，文件名为请求时间
      */
-    private String file = "logs/model-request-dump.log";
+    private String dir = "logs/model-request-dump";
 }

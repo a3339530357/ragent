@@ -121,4 +121,9 @@ public class ChatRequest {
      * </p>
      */
     private Boolean enableTools;
+
+    /**
+     * 可选：本次调用的业务类型，只用于请求 dump 分目录落盘，不发给模型；为空时落到 untagged
+     */
+    private ModelCallType callType;
 }

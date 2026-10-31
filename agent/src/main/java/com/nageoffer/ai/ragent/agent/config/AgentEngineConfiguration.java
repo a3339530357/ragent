@@ -48,10 +48,9 @@ public class AgentEngineConfiguration {
 
     @Bean
     public OpenAIChatModel agentChatModel() {
-        if (requestDumpProperties.isEnabled()) {
-            // 必须在首个 AgentScope 模型客户端构造前挂上 dump transport，此处是引擎装配最早的时机
-            AgentScopeDumpTransport.install(requestDumpWriter);
-        }
+        // 必须在首个 AgentScope 模型客户端构造前挂上 transport，此处是引擎装配最早的时机；
+        // dump 关闭时也要挂：调用类型头（X-Ragent-Call-Type）得在这里摘掉，不能发往上游
+        AgentScopeDumpTransport.install(requestDumpProperties.isEnabled() ? requestDumpWriter : null);
         AgentProperties.Chat chat = agentProperties.getChat();
         if (chat == null || StrUtil.isBlank(chat.getProvider()) || StrUtil.isBlank(chat.getModel())) {
             throw new IllegalStateException("agent.chat.provider / agent.chat.model 未配置");

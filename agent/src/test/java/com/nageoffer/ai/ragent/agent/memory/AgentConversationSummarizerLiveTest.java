@@ -87,7 +87,7 @@ class AgentConversationSummarizerLiveTest {
         AIModelProperties models = new AIModelProperties();
         models.setProviders(Map.of("deepseek", provider));
         model = spy(new AgentEngineConfiguration(properties, models, new ModelRequestDumpProperties(),
-                new ModelRequestDumpWriter("logs/test-request-dump.log")).agentChatModel());
+                new ModelRequestDumpWriter("logs/test-request-dump")).agentChatModel());
 
         String prompt = Files.readString(repositoryRoot().resolve(
                 "resources/initializer/bit-selection/prompts/context-compaction.txt"));

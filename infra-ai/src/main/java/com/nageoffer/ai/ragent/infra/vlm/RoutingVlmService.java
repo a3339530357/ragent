@@ -19,6 +19,7 @@ package com.nageoffer.ai.ragent.infra.vlm;
 
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
+import com.nageoffer.ai.ragent.framework.convention.ModelCallType;
 import com.nageoffer.ai.ragent.framework.trace.RagTraceNode;
 import com.nageoffer.ai.ragent.infra.config.AIModelProperties;
 import com.nageoffer.ai.ragent.infra.enums.ModelCapability;
@@ -79,6 +80,7 @@ public class RoutingVlmService implements VlmService {
                 .url(url)
                 .addHeader("Authorization", "Bearer " + provider.getApiKey())
                 .post(RequestBody.create(reqBody.toString(), HttpMediaTypes.JSON))
+                .tag(ModelCallType.class, ModelCallType.IMAGE_PARSE)
                 .build();
 
         JsonObject respJson;

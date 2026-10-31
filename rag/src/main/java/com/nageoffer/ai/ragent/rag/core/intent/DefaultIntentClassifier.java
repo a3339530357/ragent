@@ -34,6 +34,7 @@ import com.nageoffer.ai.ragent.rag.dao.entity.IntentNodeDO;
 import com.nageoffer.ai.ragent.rag.dao.mapper.IntentNodeMapper;
 import com.nageoffer.ai.ragent.framework.convention.ChatMessage;
 import com.nageoffer.ai.ragent.framework.convention.ChatRequest;
+import com.nageoffer.ai.ragent.framework.convention.ModelCallType;
 import com.nageoffer.ai.ragent.infra.chat.LLMService;
 import com.nageoffer.ai.ragent.rag.core.prompt.PromptTemplateLoader;
 import lombok.RequiredArgsConstructor;
@@ -184,6 +185,7 @@ public class DefaultIntentClassifier implements IntentClassifier, IntentNodeRegi
         // 标准档调用；调用失败或 JSON 非法均返回空意图（下游把空意图当作"无意图"兜底）
         String raw;
         try {
+            request.setCallType(ModelCallType.INTENT_CLASSIFY);
             raw = llmService.chat(request);
         } catch (Exception e) {
             log.warn("意图识别 LLM 调用失败，返回空意图", e);

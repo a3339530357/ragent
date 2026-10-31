@@ -19,6 +19,7 @@ package com.nageoffer.ai.ragent.rag.service.impl;
 
 import com.nageoffer.ai.ragent.framework.convention.ChatMessage;
 import com.nageoffer.ai.ragent.framework.convention.ChatRequest;
+import com.nageoffer.ai.ragent.framework.convention.ModelCallType;
 import com.nageoffer.ai.ragent.framework.trace.RagTraceNode;
 import com.nageoffer.ai.ragent.infra.chat.LLMService;
 import com.nageoffer.ai.ragent.infra.enums.Tier;
@@ -70,6 +71,7 @@ public class ConversationTitleGenerator {
                     .topP(0.3D)
                     .thinking(false)
                     .build();
+            request.setCallType(ModelCallType.TITLE_GENERATE);
             return llmService.chat(request, Tier.FAST);
         } catch (Exception ex) {
             log.warn("生成会话标题失败", ex);

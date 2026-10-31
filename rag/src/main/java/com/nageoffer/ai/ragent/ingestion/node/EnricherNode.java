@@ -22,6 +22,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.nageoffer.ai.ragent.core.chunk.model.EmbeddedChunk;
 import com.nageoffer.ai.ragent.framework.convention.ChatMessage;
 import com.nageoffer.ai.ragent.framework.convention.ChatRequest;
+import com.nageoffer.ai.ragent.framework.convention.ModelCallType;
 import com.nageoffer.ai.ragent.ingestion.domain.context.IngestionContext;
 import com.nageoffer.ai.ragent.ingestion.domain.enums.ChunkEnrichType;
 import com.nageoffer.ai.ragent.ingestion.domain.enums.IngestionNodeType;
@@ -143,6 +144,7 @@ public class EnricherNode implements IngestionNode {
     }
 
     private String chat(ChatRequest request, String modelId) {
+        request.setCallType(ModelCallType.INGESTION_ENRICH);
         return llmService.chat(request, Tier.FAST, modelId);
     }
 }

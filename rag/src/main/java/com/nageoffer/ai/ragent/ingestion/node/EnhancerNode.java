@@ -21,6 +21,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.nageoffer.ai.ragent.framework.convention.ChatMessage;
 import com.nageoffer.ai.ragent.framework.convention.ChatRequest;
+import com.nageoffer.ai.ragent.framework.convention.ModelCallType;
 import com.nageoffer.ai.ragent.ingestion.domain.context.IngestionContext;
 import com.nageoffer.ai.ragent.ingestion.domain.enums.EnhanceType;
 import com.nageoffer.ai.ragent.ingestion.domain.enums.IngestionNodeType;
@@ -127,6 +128,7 @@ public class EnhancerNode implements IngestionNode {
     }
 
     private String chat(ChatRequest request, String modelId) {
+        request.setCallType(ModelCallType.INGESTION_ENHANCE);
         return llmService.chat(request, Tier.FAST, modelId);
     }
 

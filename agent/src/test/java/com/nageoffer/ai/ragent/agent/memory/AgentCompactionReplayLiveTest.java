@@ -97,7 +97,7 @@ class AgentCompactionReplayLiveTest {
                         agent.getChat().getProvider())
                 .isNotBlank();
         Model model = new AgentEngineConfiguration(agent, ai, new ModelRequestDumpProperties(),
-                new ModelRequestDumpWriter("logs/test-request-dump.log")).agentChatModel();
+                new ModelRequestDumpWriter("logs/test-request-dump")).agentChatModel();
         AgentThinkingOptions thinking = new AgentThinkingOptions(agent, ai);
         AgentPromptResolver resolver = mock(AgentPromptResolver.class, CALLS_REAL_METHODS);
         doReturn(prompt).when(resolver).resolve(AgentPromptSlot.AGENT_CONTEXT_COMPACTION);

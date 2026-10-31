@@ -19,6 +19,7 @@ package com.nageoffer.ai.ragent.rag.service;
 
 import com.nageoffer.ai.ragent.framework.convention.ChatMessage;
 import com.nageoffer.ai.ragent.framework.convention.ChatRequest;
+import com.nageoffer.ai.ragent.framework.convention.ModelCallType;
 import com.nageoffer.ai.ragent.infra.chat.LLMService;
 import com.nageoffer.ai.ragent.rag.core.guidance.GuidanceDecision;
 import com.nageoffer.ai.ragent.rag.core.guidance.IntentGuidanceService;
@@ -95,6 +96,7 @@ public class KnowledgeSearchFacade {
                 .temperature(0D)
                 .topP(1D)
                 .thinking(false)
+                .callType(ModelCallType.AGENT_KB_ANSWER)
                 .build());
     }
 }

@@ -26,6 +26,7 @@ import com.nageoffer.ai.ragent.agent.config.AgentProperties;
 import com.nageoffer.ai.ragent.agent.config.AgentThinkingOptions;
 import com.nageoffer.ai.ragent.agent.config.ConditionalOnAgentEngine;
 import com.nageoffer.ai.ragent.agent.dao.entity.AgentMessageDO;
+import com.nageoffer.ai.ragent.framework.convention.ModelCallType;
 import com.nageoffer.ai.ragent.infra.util.LLMResponseCleaner;
 import com.nageoffer.ai.ragent.rag.core.prompt.AgentPromptResolver;
 import com.nageoffer.ai.ragent.rag.core.prompt.AgentPromptSlot;
@@ -161,6 +162,7 @@ public class AgentMemoryJudge {
         // 按供应商方言显式关闭思考：多数模型默认开思考，不关会白等一段推理；方言不明的供应商不发任何字段
         // （DeepSeek 等经实测：默认思考深度与 low 效果相当，关掉后单次调用平均省约 15% 耗时，经验并入方言表）
         agentThinkingOptions.disable(options);
+        options.additionalHeader(ModelCallType.HEADER, ModelCallType.AGENT_MEMORY_JUDGE.name());
         return options.build();
     }
 

@@ -23,6 +23,7 @@ import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import com.nageoffer.ai.ragent.framework.convention.ChatMessage;
 import com.nageoffer.ai.ragent.framework.convention.ChatRequest;
+import com.nageoffer.ai.ragent.framework.convention.ModelCallType;
 import com.nageoffer.ai.ragent.framework.trace.RagStreamTraceSupport;
 import com.nageoffer.ai.ragent.framework.trace.RagStreamTraceSupport.StreamSpan;
 import com.nageoffer.ai.ragent.infra.config.AIModelProperties;
@@ -121,6 +122,7 @@ public abstract class AbstractOpenAIStyleChatClient implements ChatClient {
         JsonObject reqBody = buildRequestBody(request, target, false);
         Request requestHttp = newAuthorizedRequest(provider, target)
                 .post(RequestBody.create(reqBody.toString(), HttpMediaTypes.JSON))
+                .tag(ModelCallType.class, callTypeOf(request))
                 .build();
 
         Call httpCall = resolveSyncClient(target.timeoutMs()).newCall(requestHttp);
@@ -173,6 +175,7 @@ public abstract class AbstractOpenAIStyleChatClient implements ChatClient {
         Request streamRequest = newAuthorizedRequest(provider, target)
                 .post(RequestBody.create(reqBody.toString(), HttpMediaTypes.JSON))
                 .addHeader("Accept", "text/event-stream")
+                .tag(ModelCallType.class, callTypeOf(request))
                 .build();
 
         Call call = streamingHttpClient.newCall(streamRequest);
@@ -305,6 +308,13 @@ public abstract class AbstractOpenAIStyleChatClient implements ChatClient {
             case USER -> "user";
             case ASSISTANT -> "assistant";
         };
+    }
+
+    /**
+     * 模型请求一律带上类型 tag（dump 只认带 tag 的请求），调用点没标注的归入 untagged
+     */
+    private static ModelCallType callTypeOf(ChatRequest request) {
+        return request.getCallType() == null ? ModelCallType.UNTAGGED : request.getCallType();
     }
 
     private Request.Builder newAuthorizedRequest(AIModelProperties.ProviderConfig provider, ModelTarget target) {

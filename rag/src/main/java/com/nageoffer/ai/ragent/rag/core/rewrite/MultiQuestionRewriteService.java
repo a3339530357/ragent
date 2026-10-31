@@ -27,6 +27,7 @@ import com.nageoffer.ai.ragent.infra.util.LLMResponseCleaner;
 import com.nageoffer.ai.ragent.rag.config.RAGConfigProperties;
 import com.nageoffer.ai.ragent.framework.convention.ChatMessage;
 import com.nageoffer.ai.ragent.framework.convention.ChatRequest;
+import com.nageoffer.ai.ragent.framework.convention.ModelCallType;
 import com.nageoffer.ai.ragent.framework.trace.RagTraceNode;
 import com.nageoffer.ai.ragent.infra.chat.LLMService;
 import com.nageoffer.ai.ragent.infra.enums.Tier;
@@ -98,6 +99,7 @@ public class MultiQuestionRewriteService implements QueryRewriteService {
         RewriteResult fallback = new RewriteResult(normalizedQuestion, List.of(normalizedQuestion));
         RewriteResult result;
         try {
+            req.setCallType(ModelCallType.QUERY_REWRITE);
             RewriteResult parsed = parseRewriteAndSplit(llmService.chat(req, Tier.FAST));
             result = parsed != null ? parsed : fallback;
         } catch (Exception e) {

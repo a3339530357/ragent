@@ -204,8 +204,8 @@ rag:
 
 ai:
   request-dump:
-    enabled: true # 调试开关：true 时所有模型请求（Agent 引擎 + 自研客户端）的完整请求头与请求体落盘到 file；注意含 API Key 明文，仅限本机调试
-    file: logs/model-request-dump.log
+    enabled: true # 调试开关：true 时所有模型请求（Agent 引擎 + 自研客户端）的完整请求头、请求体与返回落盘；注意含 API Key 明文，仅限本机调试
+    dir: logs/model-request-dump # 按调用类型分子目录（main-chat / query-rewrite / intent-classify …），每次请求一个缩进好的 JSON 文件，文件名为请求时间
   providers:
     newapi:
       url: http://103.236.97.137:20665

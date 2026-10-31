@@ -21,6 +21,7 @@ import cn.hutool.core.collection.CollUtil;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
+import com.nageoffer.ai.ragent.framework.convention.ModelCallType;
 import com.nageoffer.ai.ragent.framework.convention.RetrievedChunk;
 import com.nageoffer.ai.ragent.infra.config.AIModelProperties;
 import com.nageoffer.ai.ragent.infra.enums.ModelCapability;
@@ -112,6 +113,7 @@ public class BaiLianRerankClient implements RerankClient {
                 .url(ModelUrlResolver.resolveUrl(provider, target.candidate(), ModelCapability.RERANK))
                 .post(RequestBody.create(reqBody.toString(), HttpMediaTypes.JSON))
                 .addHeader("Authorization", "Bearer " + provider.getApiKey())
+                .tag(ModelCallType.class, ModelCallType.RERANK)
                 .build();
 
         JsonObject respJson;

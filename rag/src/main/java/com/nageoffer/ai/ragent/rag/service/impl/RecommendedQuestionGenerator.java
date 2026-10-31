@@ -23,6 +23,7 @@ import cn.hutool.json.JSONArray;
 import cn.hutool.json.JSONUtil;
 import com.nageoffer.ai.ragent.framework.convention.ChatMessage;
 import com.nageoffer.ai.ragent.framework.convention.ChatRequest;
+import com.nageoffer.ai.ragent.framework.convention.ModelCallType;
 import com.nageoffer.ai.ragent.framework.convention.GroundingChunk;
 import com.nageoffer.ai.ragent.framework.trace.RagTraceNode;
 import com.nageoffer.ai.ragent.infra.chat.LLMService;
@@ -83,6 +84,7 @@ public class RecommendedQuestionGenerator {
                     .maxTokens(MAX_OUTPUT_TOKENS)
                     .thinking(false)
                     .build();
+            request.setCallType(ModelCallType.RECOMMEND_QUESTIONS);
             String raw = llmService.chat(request, Tier.FAST);
             return parseQuestions(raw, count);
         } catch (Exception ex) {
