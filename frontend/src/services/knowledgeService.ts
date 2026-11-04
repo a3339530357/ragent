@@ -21,6 +21,7 @@ export interface KnowledgeDocument {
   scheduleCron?: string | null;
   enabled?: boolean | null;
   chunkCount?: number | null;
+  duplicateChunkCount?: number | null;
   fileUrl?: string | null;
   fileType?: string | null;
   fileSize?: number | null;
@@ -98,6 +99,7 @@ export interface KnowledgeDocumentPageParams {
 }
 
 export interface KnowledgeDocumentUploadPayload {
+  allowDuplicate?: boolean;
   sourceType: "file" | "url";
   file?: File | null;
   sourceLocation?: string | null;
@@ -241,6 +243,9 @@ export const uploadDocument = async (
 ): Promise<KnowledgeDocument> => {
   const formData = new FormData();
   formData.append("sourceType", payload.sourceType);
+  if (payload.allowDuplicate !== undefined) {
+    formData.append("allowDuplicate", String(payload.allowDuplicate));
+  }
   if (payload.file) {
     formData.append("file", payload.file);
   }

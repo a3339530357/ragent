@@ -72,6 +72,9 @@ public class KnowledgeDocumentVO {
      */
     private Integer chunkCount;
 
+    /** 重复片段数 */
+    private Long duplicateChunkCount = 0L;
+
     /**
      * 文件URL
      */

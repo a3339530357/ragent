@@ -107,6 +107,9 @@ public class KnowledgeDocumentDO {
      */
     private Long fileSize;
 
+    /** 原始文件字节的 SHA-256，仅本地上传填写 */
+    private String fileHash;
+
     /**
      * 处理模式：chunk / pipeline
      * - chunk: 使用分块策略直接分块

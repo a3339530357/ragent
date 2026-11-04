@@ -3,6 +3,13 @@ import { toast } from "sonner";
 
 import { storage } from "@/utils/storage";
 
+export class ApiError extends Error {
+  constructor(public readonly code: string, message: string) {
+    super(message);
+    this.name = "ApiError";
+  }
+}
+
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "";
 
 export const api = axios.create({
@@ -39,7 +46,7 @@ api.interceptors.response.use(
             window.location.href = "/login";
           }
         }
-        return Promise.reject(new Error(message));
+        return Promise.reject(new ApiError(String(payload.code), message));
       }
       return payload.data;
     }

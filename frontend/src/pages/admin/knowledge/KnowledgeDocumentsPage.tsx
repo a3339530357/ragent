@@ -39,6 +39,10 @@ import { getIngestionPipelines, type IngestionPipeline } from "@/services/ingest
 import { getSystemSettings } from "@/services/settingsService";
 import { DocumentPreview, isDocxType, isImageType, isPreviewableType, isSpreadsheetType } from "@/components/document/DocumentPreview";
 import { getErrorMessage } from "@/utils/error";
+import { ApiError } from "@/services/api";
+
+type DuplicatePrompt = { name: string; resolve: (confirmed: boolean) => void };
+const DUPLICATE_FILE_CODE = "A000202";
 
 const DEFAULT_PAGE_SIZE = 10;
 const PAGE_SIZE_OPTIONS = [10, 20, 50, 100, 500];
@@ -371,6 +375,26 @@ export function KnowledgeDocumentsPage() {
   const [keyword, setKeyword] = useState("");
   const [searchInput, setSearchInput] = useState("");
   const [uploadOpen, setUploadOpen] = useState(false);
+  const duplicateQueue = useRef<DuplicatePrompt[]>([]);
+  const uploadPageActive = useRef(true);
+  const [duplicatePrompt, setDuplicatePrompt] = useState<DuplicatePrompt | null>(null);
+  const confirmDuplicate = (name: string) => new Promise<boolean>((resolve) => {
+    if (!uploadPageActive.current) { resolve(false); return; }
+    duplicateQueue.current.push({ name, resolve });
+    setDuplicatePrompt(duplicateQueue.current[0]);
+  });
+  const resolveDuplicate = (confirmed: boolean) => {
+    duplicateQueue.current.shift()?.resolve(confirmed);
+    setDuplicatePrompt(duplicateQueue.current[0] ?? null);
+  };
+  useEffect(() => {
+    uploadPageActive.current = true;
+    return () => {
+      // 离开页面时释放所有等待中的上传任务，迟到的响应也不再弹框
+      uploadPageActive.current = false;
+      duplicateQueue.current.splice(0).forEach((prompt) => prompt.resolve(false));
+    };
+  }, []);
   const [deleteTarget, setDeleteTarget] = useState<KnowledgeDocument | null>(null);
   const [chunkTarget, setChunkTarget] = useState<KnowledgeDocument | null>(null);
   const [detailTarget, setDetailTarget] = useState<KnowledgeDocument | null>(null);
@@ -903,6 +927,11 @@ export function KnowledgeDocumentsPage() {
                       ) : (
                         <span className="text-muted-foreground/50">-</span>
                       )}
+                      {(doc.duplicateChunkCount ?? 0) > 0 && (
+                        <span className="ml-2 text-xs text-amber-600" title="这些片段与本知识库中已有内容重复，仍保留并参与检索">
+                          {doc.duplicateChunkCount} 个重复
+                        </span>
+                      )}
                     </TableCell>
                     <TableCell>
                       <ProcessModeCell doc={doc} pipelineMap={pipelineMap} specSchema={specSchema} />
@@ -1031,7 +1060,18 @@ export function KnowledgeDocumentsPage() {
           } else {
             const result = await uploadFilesConcurrently(
               batchFiles,
-              (file) => uploadDocument(kbId, { ...payload, file }),
+              async (file) => {
+                try {
+                  return await uploadDocument(kbId, { ...payload, file });
+                } catch (error) {
+                  if (!(error instanceof ApiError) || error.code !== DUPLICATE_FILE_CODE) throw error;
+                  if (isStopped()) throw error;
+                  const name = error.message.replace(/^该文件已存在于本知识库：/, "");
+                  // 并发上传的重复提示排队展示，每次确认只授权当前文件
+                  if (!await confirmDuplicate(name) || isStopped()) throw error;
+                  return uploadDocument(kbId, { ...payload, file, allowDuplicate: true });
+                }
+              },
               onProgress,
               isStopped
             );
@@ -1060,6 +1100,19 @@ export function KnowledgeDocumentsPage() {
           return leftover;
         }}
       />
+
+      <AlertDialog open={Boolean(duplicatePrompt)} onOpenChange={(open) => { if (!open) resolveDuplicate(false); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>文件已存在</AlertDialogTitle>
+            <AlertDialogDescription>已存在 {duplicatePrompt?.name}，仍要上传吗？</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={(event) => { event.preventDefault(); resolveDuplicate(false); }}>取消</AlertDialogCancel>
+            <AlertDialogAction onClick={(event) => { event.preventDefault(); resolveDuplicate(true); }}>仍要上传</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       <AlertDialog open={Boolean(deleteTarget)} onOpenChange={(open) => (!open ? setDeleteTarget(null) : null)}>
         <AlertDialogContent>

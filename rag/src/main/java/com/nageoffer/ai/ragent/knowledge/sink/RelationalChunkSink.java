@@ -18,6 +18,7 @@
 package com.nageoffer.ai.ragent.knowledge.sink;
 
 import cn.hutool.crypto.SecureUtil;
+import com.nageoffer.ai.ragent.knowledge.support.ChunkDuplicateMarker;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.nageoffer.ai.ragent.core.chunk.model.EmbeddedChunk;
 import com.nageoffer.ai.ragent.core.ingest.DocumentRef;
@@ -77,6 +78,7 @@ public class RelationalChunkSink implements ChunkSink {
                     .updatedBy(username)
                     .build());
         }
+        ChunkDuplicateMarker.mark(chunkMapper, rows);
         chunkMapper.insert(rows);
         log.debug("关系库块写入完成 docId={} 块数={}", doc.docId(), rows.size());
     }

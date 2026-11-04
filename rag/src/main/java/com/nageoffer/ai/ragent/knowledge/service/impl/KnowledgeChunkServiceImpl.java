@@ -62,6 +62,7 @@ import org.springframework.transaction.support.TransactionOperations;
 import org.springframework.util.StringUtils;
 
 import cn.hutool.crypto.SecureUtil;
+import com.nageoffer.ai.ragent.knowledge.support.ChunkDuplicateMarker;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -156,6 +157,7 @@ public class KnowledgeChunkServiceImpl implements KnowledgeChunkService {
                 .updatedBy(UserContext.getUsername())
                 .build();
 
+        ChunkDuplicateMarker.mark(chunkMapper, List.of(chunkDO));
         chunkMapper.insert(chunkDO);
         log.info("新增 Chunk 成功, kbId={}, docId={}, chunkId={}, chunkIndex={}", documentDO.getKbId(), docId, chunkDO.getId(), chunkIndex);
 
@@ -212,6 +214,7 @@ public class KnowledgeChunkServiceImpl implements KnowledgeChunkService {
         chunkDO.setEmbeddingText(newContent);
         chunkDO.setUpdatedBy(UserContext.getUsername());
 
+        ChunkDuplicateMarker.mark(chunkMapper, List.of(chunkDO));
         chunkMapper.updateById(chunkDO);
 
         log.info("更新 Chunk 成功, kbId={}, docId={}, chunkId={}", documentDO.getKbId(), docId, chunkId);

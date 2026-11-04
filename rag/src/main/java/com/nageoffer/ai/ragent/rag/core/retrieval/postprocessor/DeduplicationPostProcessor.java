@@ -22,6 +22,7 @@ import com.nageoffer.ai.ragent.framework.convention.RetrievedChunkKey;
 import com.nageoffer.ai.ragent.rag.core.retrieval.channel.SearchChannelResult;
 import com.nageoffer.ai.ragent.rag.core.retrieval.channel.SearchContext;
 import org.springframework.stereotype.Component;
+import lombok.extern.slf4j.Slf4j;
 
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -31,9 +32,10 @@ import java.util.Map;
 /**
  * 去重后置处理器
  * <p>
- * 合并多个通道的结果并按 key 去重，同一 Chunk 多路命中时保留首次出现的实例
- * 不比较跨通道原始分数，最终名次由下游 RRF 融合赋分
+ * 先按身份键保留首次出现的实例，再按规范化内容保留最高分片段
+ * 内容组的通道归因由原始召回重建，最终名次仍由下游 RRF 融合赋分
  */
+@Slf4j
 @Component
 public class DeduplicationPostProcessor implements SearchResultPostProcessor {
 
@@ -62,6 +64,13 @@ public class DeduplicationPostProcessor implements SearchResultPostProcessor {
                 chunkMap.putIfAbsent(RetrievedChunkKey.of(chunk), chunk);
             }
         }
-        return new ArrayList<>(chunkMap.values());
+        Map<String, RetrievedChunk> contentMap = new LinkedHashMap<>();
+        for (RetrievedChunk chunk : chunkMap.values()) {
+            contentMap.merge(RetrievedChunkContentKey.of(chunk), chunk, (first, next) ->
+                    next.getScore() != null && (first.getScore() == null || next.getScore() > first.getScore())
+                            ? next : first);
+        }
+        log.debug("检索按内容去重丢弃 {} 条", chunkMap.size() - contentMap.size());
+        return new ArrayList<>(contentMap.values());
     }
 }

@@ -93,6 +93,9 @@ public enum BaseErrorCode implements IErrorCode {
      */
     IDEMPOTENT_TOKEN_DELETE_ERROR("A000201", "幂等Token已被使用或失效"),
 
+    /** 知识库内已有相同文件 */
+    KNOWLEDGE_FILE_DUPLICATE("A000202", "该文件已存在于本知识库"),
+
     // ========== A03 查询参数错误 ==========
 
     /**

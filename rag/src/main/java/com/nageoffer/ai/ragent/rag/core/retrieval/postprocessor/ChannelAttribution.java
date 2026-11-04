@@ -35,7 +35,7 @@ import java.util.Set;
  * {@link RetrievedChunk} 不携带来源通道字段（框架层 DTO 保持纯净），故按 chunk key 从不可变的
  * {@link SearchChannelResult} 反查每条证据来自哪些通道，供融合 / Rerank 打印「各通道贡献 / 存活率」的可观测日志
  * <p>
- * 归因键统一由 {@link RetrievedChunkKey} 生成，避免通道去重、融合和归因采用不同的身份规则
+ * 归因仍按身份键查询；同一内容组的所有身份共享通道集合，避免被丢弃副本的归因丢失
  */
 final class ChannelAttribution {
 
@@ -50,15 +50,19 @@ final class ChannelAttribution {
         if (results == null) {
             return index;
         }
+        Map<String, String> contentKeys = RetrievedChunkContentKey.index(results);
+        Map<String, Set<SearchChannelType>> contentChannels = new HashMap<>();
         for (SearchChannelResult result : results) {
             if (result == null || result.getChunks() == null) {
                 continue;
             }
             for (RetrievedChunk chunk : result.getChunks()) {
-                index.computeIfAbsent(RetrievedChunkKey.of(chunk), k -> EnumSet.noneOf(SearchChannelType.class))
+                contentChannels.computeIfAbsent(contentKeys.get(RetrievedChunkKey.of(chunk)),
+                                k -> EnumSet.noneOf(SearchChannelType.class))
                         .add(result.getChannelType());
             }
         }
+        contentKeys.forEach((identity, content) -> index.put(identity, contentChannels.get(content)));
         return index;
     }
 

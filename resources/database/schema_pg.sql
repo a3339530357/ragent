@@ -189,6 +189,7 @@ CREATE TABLE t_knowledge_document (
     file_type        VARCHAR(16)   NOT NULL,
     mime_type        VARCHAR(128),
     file_size        BIGINT,
+    file_hash        VARCHAR(64),
     process_mode     VARCHAR(16)   DEFAULT 'chunk',
     status           VARCHAR(16)   NOT NULL DEFAULT 'pending',
     source_type      VARCHAR(16),
@@ -204,6 +205,8 @@ CREATE TABLE t_knowledge_document (
     deleted          SMALLINT      NOT NULL DEFAULT 0
 );
 CREATE INDEX idx_kb_id ON t_knowledge_document (kb_id);
+CREATE INDEX idx_document_kb_file_hash ON t_knowledge_document (kb_id, file_hash);
+COMMENT ON COLUMN t_knowledge_document.file_hash IS '本地上传原始文件字节的SHA-256';
 COMMENT ON TABLE t_knowledge_document IS '知识库文档表';
 
 CREATE TABLE t_knowledge_chunk (
@@ -213,6 +216,7 @@ CREATE TABLE t_knowledge_chunk (
     chunk_index    INTEGER     NOT NULL,
     content        TEXT        NOT NULL,
     content_hash   VARCHAR(64),
+    duplicate_of   VARCHAR(64),
     char_count     INTEGER,
     token_count    INTEGER,
     embedding_text TEXT,
@@ -224,6 +228,8 @@ CREATE TABLE t_knowledge_chunk (
     deleted        SMALLINT    NOT NULL DEFAULT 0
 );
 CREATE INDEX idx_doc_id ON t_knowledge_chunk (doc_id);
+CREATE INDEX idx_chunk_kb_content_hash ON t_knowledge_chunk (kb_id, content_hash);
+COMMENT ON COLUMN t_knowledge_chunk.duplicate_of IS '同库最早相同内容片段ID，仅供提示';
 COMMENT ON TABLE t_knowledge_chunk IS '知识库文档分块表';
 
 CREATE TABLE t_knowledge_document_chunk_log (

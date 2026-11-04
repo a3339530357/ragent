@@ -18,6 +18,8 @@
 package com.nageoffer.ai.ragent.knowledge.service.impl;
 
 import cn.hutool.core.bean.BeanUtil;
+import cn.hutool.crypto.SecureUtil;
+import com.nageoffer.ai.ragent.framework.errorcode.BaseErrorCode;
 import cn.hutool.core.collection.CollUtil;
 import cn.hutool.core.lang.Assert;
 import cn.hutool.core.util.StrUtil;
@@ -150,6 +152,28 @@ public class KnowledgeDocumentServiceImpl implements KnowledgeDocumentService {
         // 摄取配置的校验排在存文件之前：它只看请求参数，而一旦落了对象再抛异常，
         // 存储里就留下一个没有文档指向它的孤儿。纯校验一律前置到第一个副作用之前
         ProcessModeConfig modeConfig = resolveProcessModeConfig(requestParam);
+        String fileHash = null;
+        if (SourceType.FILE == sourceType) {
+            Assert.notNull(file, () -> new ClientException("上传文件不能为空"));
+            // 流式计算原始字节摘要，查重通过后才写入文件存储
+            try (InputStream in = file.getInputStream()) {
+                fileHash = SecureUtil.sha256(in);
+            } catch (Exception e) {
+                throw new ClientException("读取上传文件失败：" + e.getMessage());
+            }
+            if (!Boolean.TRUE.equals(requestParam.getAllowDuplicate())) {
+                KnowledgeDocumentDO existing = documentMapper.selectOne(Wrappers.lambdaQuery(KnowledgeDocumentDO.class)
+                        .eq(KnowledgeDocumentDO::getKbId, kbId)
+                        .eq(KnowledgeDocumentDO::getFileHash, fileHash)
+                        .eq(KnowledgeDocumentDO::getDeleted, 0)
+                        .orderByAsc(KnowledgeDocumentDO::getCreateTime, KnowledgeDocumentDO::getId)
+                        .last("LIMIT 1"));
+                if (existing != null) {
+                    throw new ClientException("该文件已存在于本知识库：" + existing.getDocName(),
+                            BaseErrorCode.KNOWLEDGE_FILE_DUPLICATE);
+                }
+            }
+        }
         StoredFileDTO stored = resolveStoredFile(kbDO.getCollectionName(), sourceType, requestParam.getSourceLocation(), file);
         // 前置拦截：与分块阶段同一套 MIME 路由，无解析器的类型直接拒绝，不落库不发 MQ
         if (!parserRegistry.canParse(stored.getMimeType())) {
@@ -166,6 +190,7 @@ public class KnowledgeDocumentServiceImpl implements KnowledgeDocumentService {
                 .fileType(stored.getDetectedType())
                 .mimeType(stored.getMimeType())
                 .fileSize(stored.getSize())
+                .fileHash(fileHash)
                 .status(DocumentStatus.PENDING.getCode())
                 .sourceType(sourceType.getValue())
                 .sourceLocation(SourceType.URL == sourceType ? StrUtil.trimToNull(requestParam.getSourceLocation()) : null)
@@ -459,7 +484,9 @@ public class KnowledgeDocumentServiceImpl implements KnowledgeDocumentService {
     public KnowledgeDocumentVO get(String docId) {
         KnowledgeDocumentDO documentDO = documentMapper.selectById(docId);
         Assert.notNull(documentDO, () -> new ClientException("文档不存在"));
-        return toVO(documentDO);
+        KnowledgeDocumentVO vo = toVO(documentDO);
+        vo.setDuplicateChunkCount(findDuplicateCounts(List.of(docId)).getOrDefault(docId, 0L));
+        return vo;
     }
 
     @Override
@@ -590,7 +617,11 @@ public class KnowledgeDocumentServiceImpl implements KnowledgeDocumentService {
                 .map(KnowledgeDocumentVO::getId)
                 .collect(Collectors.toList());
         Set<String> editedDocIds = findEditedDocIds(docIds);
-        result.getRecords().forEach(vo -> vo.setChunksEdited(editedDocIds.contains(vo.getId())));
+        Map<String, Long> duplicateCounts = findDuplicateCounts(docIds);
+        result.getRecords().forEach(vo -> {
+            vo.setChunksEdited(editedDocIds.contains(vo.getId()));
+            vo.setDuplicateChunkCount(duplicateCounts.getOrDefault(vo.getId(), 0L));
+        });
 
         return result;
     }
@@ -608,6 +639,22 @@ public class KnowledgeDocumentServiceImpl implements KnowledgeDocumentService {
             vo.setIngestionSpec(ingestionSpecCodec.write(ingestionSpecCodec.read(documentDO.getIngestionSpec())));
         }
         return vo;
+    }
+
+    private Map<String, Long> findDuplicateCounts(List<String> docIds) {
+        if (docIds.isEmpty()) {
+            return Collections.emptyMap();
+        }
+        QueryWrapper<KnowledgeChunkDO> wrapper = new QueryWrapper<>();
+        wrapper.select("doc_id", "COUNT(*) AS duplicate_count")
+                .in("doc_id", docIds)
+                .isNotNull("duplicate_of")
+                .eq("deleted", 0)
+                .groupBy("doc_id");
+        Map<String, Long> counts = new HashMap<>();
+        chunkMapper.selectMaps(wrapper).forEach(row -> counts.put(String.valueOf(row.get("doc_id")),
+                ((Number) row.get("duplicate_count")).longValue()));
+        return counts;
     }
 
     private Set<String> findEditedDocIds(List<String> docIds) {

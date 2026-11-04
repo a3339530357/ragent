@@ -18,6 +18,7 @@
 package com.nageoffer.ai.ragent.knowledge.dao.entity;
 
 import com.baomidou.mybatisplus.annotation.FieldFill;
+import com.baomidou.mybatisplus.annotation.FieldStrategy;
 import com.baomidou.mybatisplus.annotation.IdType;
 import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableId;
@@ -70,6 +71,10 @@ public class KnowledgeChunkDO {
      * 内容哈希（用于幂等/去重）
      */
     private String contentHash;
+
+    /** 同库最早出现的相同内容片段，仅供提示 */
+    @TableField(updateStrategy = FieldStrategy.ALWAYS)
+    private String duplicateOf;
 
     /**
      * 字符数（可用于统计/调参）

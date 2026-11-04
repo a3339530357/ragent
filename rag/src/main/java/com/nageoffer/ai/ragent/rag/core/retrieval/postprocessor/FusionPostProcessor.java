@@ -29,6 +29,7 @@ import org.springframework.stereotype.Component;
 
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -100,12 +101,18 @@ public class FusionPostProcessor implements SearchResultPostProcessor {
     private List<RetrievedChunk> fuseByRrf(List<RetrievedChunk> chunks, List<SearchChannelResult> results) {
         int k = properties.getFusion().getRrfK();
 
+        Map<String, String> contentKeys = RetrievedChunkContentKey.index(results);
         Map<String, Double> rrfScores = new LinkedHashMap<>();
         for (SearchChannelResult result : results) {
             double weight = weightOf(result.getChannelType());
             List<RetrievedChunk> channelChunks = result.getChunks();
+            Set<String> seen = new HashSet<>();
             for (int rank = 0; rank < channelChunks.size(); rank++) {
-                String key = RetrievedChunkKey.of(channelChunks.get(rank));
+                String key = contentKeys.get(RetrievedChunkKey.of(channelChunks.get(rank)));
+                // 同一内容在每个通道只取最早名次，副本数量不应放大融合权重
+                if (!seen.add(key)) {
+                    continue;
+                }
                 double delta = weight / (k + rank + 1);
                 rrfScores.merge(key, delta, Double::sum);
             }
@@ -113,7 +120,7 @@ public class FusionPostProcessor implements SearchResultPostProcessor {
 
         List<RetrievedChunk> fused = new ArrayList<>(chunks);
         for (RetrievedChunk chunk : fused) {
-            Double score = rrfScores.get(RetrievedChunkKey.of(chunk));
+            Double score = rrfScores.get(contentKeys.get(RetrievedChunkKey.of(chunk)));
             chunk.setScore(score != null ? score.floatValue() : 0f);
         }
         fused.sort((a, b) -> Float.compare(b.getScore(), a.getScore()));

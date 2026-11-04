@@ -158,7 +158,8 @@ final class ModelStreamAssembler {
                     ? fragment.getAsJsonObject("function") : null;
             if (function != null) {
                 String name = stringOf(function, "name");
-                if (name != null) {
+                // 部分上游在后续分片里重复带 name:""，空串不能覆盖首片的真实工具名
+                if (name != null && !name.isEmpty()) {
                     call.addProperty("name", name);
                 }
                 String args = stringOf(function, "arguments");

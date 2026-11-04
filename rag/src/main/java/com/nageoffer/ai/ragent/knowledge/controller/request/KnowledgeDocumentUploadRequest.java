@@ -27,6 +27,9 @@ public class KnowledgeDocumentUploadRequest {
      */
     private String sourceType;
 
+    /** 用户确认后允许重复上传，默认拒绝 */
+    private Boolean allowDuplicate = false;
+
     /**
      * 来源位置（URL）
      */
