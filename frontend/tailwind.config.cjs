@@ -61,6 +61,11 @@ module.exports = {
         "float": {
           "0%, 100%": { transform: "translateY(0)" },
           "50%": { transform: "translateY(-6px)" }
+        },
+        // 小控件出现：短促淡入并上移 4px，只用于说明「这里多了个东西」
+        "pop-in": {
+          "0%": { opacity: 0, transform: "translateY(4px)" },
+          "100%": { opacity: 1, transform: "translateY(0)" }
         }
       },
       animation: {
@@ -69,7 +74,8 @@ module.exports = {
         "blink": "blink 1s step-end infinite",
         "spin-slow": "spin-slow 4s linear infinite",
         "glow": "glow 2.6s ease-in-out infinite",
-        "float": "float 6s ease-in-out infinite"
+        "float": "float 6s ease-in-out infinite",
+        "pop-in": "pop-in 150ms ease-out"
       },
       backgroundImage: {
         "gradient-radial": "radial-gradient(var(--tw-gradient-stops))",

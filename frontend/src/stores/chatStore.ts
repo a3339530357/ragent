@@ -51,6 +51,7 @@ interface ChatState {
   setDeepThinkingEnabled: (enabled: boolean) => void;
   sendMessage: (content: string) => Promise<void>;
   cancelGeneration: () => void;
+  retryMessage: (assistantId: string) => Promise<void>;
   appendStreamContent: (delta: string) => void;
   appendThinkingContent: (delta: string) => void;
   submitFeedback: (messageId: string, feedback: FeedbackValue) => Promise<void>;
@@ -86,6 +87,29 @@ function computeThinkingDuration(startAt?: number | null) {
   if (!startAt) return undefined;
   const seconds = Math.round((Date.now() - startAt) / 1000);
   return Math.max(1, seconds);
+}
+
+// 点了停止后等后端确认的最长时间；超时就在本地断开连接并按已停止处理，避免按钮一直卡在「停止中」
+const CANCEL_FALLBACK_MS = 6000;
+
+/**
+ * 把流式请求的异常翻译成用户能看懂、知道下一步怎么做的话
+ * 后端通过 error 事件推来的文案原样保留，只翻译前端自己抛出的网络/HTTP 错误
+ */
+export function describeStreamError(error: Error): string {
+  const raw = (error?.message || "").trim();
+  const httpMatch = raw.match(/SSE 请求失败（(\d+)）/);
+  if (httpMatch) {
+    const code = Number(httpMatch[1]);
+    if (code === 401 || code === 403) return "登录已失效，请重新登录后重试";
+    if (code === 429) return "请求太频繁，请稍后重试";
+    if (code >= 500) return `服务暂时出错（${code}），请稍后重试`;
+    return `请求失败（${code}）`;
+  }
+  if (error?.name === "TypeError" || /failed to fetch|network|load failed|流式响应为空/i.test(raw)) {
+    return "网络连接中断，请检查网络后重试";
+  }
+  return raw || "生成失败，请重试";
 }
 
 const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL || "").replace(/\/$/, "");
@@ -400,14 +424,11 @@ export const useChatStore = create<ChatState>((set, get) => ({
         set((state) => ({
           messages: state.messages.map((message) => {
             if (message.id !== state.streamingMessageId) return message;
-            const suffix = message.content.includes("（已停止生成）")
-              ? ""
-              : "\n\n（已停止生成）";
+            // 「已停止」由消息下方的状态标签展示，不再拼进正文，避免复制时一并带走
             const nextId = payload?.messageId ? String(payload.messageId) : message.id;
             return {
               ...message,
               id: nextId,
-              content: message.content + suffix,
               status: "cancelled",
               isThinking: false,
               sources: payload?.sources ?? message.sources,
@@ -454,6 +475,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
               ? {
                   ...message,
                   status: "error",
+                  errorMessage: describeStreamError(error),
                   isThinking: false,
                   thinkingDuration:
                     message.thinkingDuration ?? computeThinkingDuration(state.thinkingStartAt)
@@ -461,7 +483,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
               : message
           )
         }));
-        toast.error(error.message || "生成失败");
+        // 失败原因和「重试」按钮直接显示在这条回答下方，不再额外弹全局提示
       }
     };
 
@@ -496,12 +518,55 @@ export const useChatStore = create<ChatState>((set, get) => ({
     }
   },
   cancelGeneration: () => {
-    const { isStreaming, streamTaskId } = get();
-    if (!isStreaming) return;
+    const { isStreaming, streamTaskId, cancelRequested, streamingMessageId } = get();
+    if (!isStreaming || cancelRequested) return;
+    // cancelRequested 同时驱动输入区的「停止中」状态：点下即有反馈，且防重复点击
     set({ cancelRequested: true });
     if (streamTaskId) {
       stopTask(streamTaskId).catch(() => null);
     }
+    // 兜底：后端迟迟不确认（停止接口失败、任务号一直没下发）时本地断开，按已停止收尾
+    const targetId = streamingMessageId;
+    window.setTimeout(() => {
+      const state = get();
+      if (!state.isStreaming || !state.cancelRequested || state.streamingMessageId !== targetId) {
+        return;
+      }
+      state.streamAbort?.();
+      set((current) => ({
+        messages: current.messages.map((message) =>
+          message.id === targetId
+            ? {
+                ...message,
+                status: "cancelled",
+                isThinking: false,
+                messageStatus: "INTERRUPTED",
+                thinkingDuration:
+                  message.thinkingDuration ?? computeThinkingDuration(current.thinkingStartAt)
+              }
+            : message
+        ),
+        isStreaming: false,
+        thinkingStartAt: null,
+        streamTaskId: null,
+        streamAbort: null,
+        streamingMessageId: null,
+        cancelRequested: false
+      }));
+    }, CANCEL_FALLBACK_MS);
+  },
+  retryMessage: async (assistantId) => {
+    const { messages, isStreaming } = get();
+    if (isStreaming) return;
+    const index = messages.findIndex((message) => message.id === assistantId);
+    if (index <= 0) return;
+    const question = messages[index - 1];
+    if (question.role !== "user" || !question.content.trim()) return;
+    // 把失败的这一轮从界面上撤掉，再用同一个问题重新发起；sendMessage 会重新追加这一问一答
+    set((state) => ({
+      messages: state.messages.filter((_, i) => i !== index && i !== index - 1)
+    }));
+    await get().sendMessage(question.content);
   },
   appendStreamContent: (delta) => {
     if (!delta) return;

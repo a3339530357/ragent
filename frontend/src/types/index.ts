@@ -48,6 +48,8 @@ export interface Message {
   recommendedState?: "loading" | "ready" | "error";
   recommendedOpen?: boolean;
   messageStatus?: PersistedMessageStatus;
+  /** 生成失败时给用户看的原因（仅前端，不落库） */
+  errorMessage?: string;
 }
 
 export type RecommendedQuestionStatus = "SUCCESS" | "EMPTY" | "FAILED";

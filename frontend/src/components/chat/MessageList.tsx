@@ -1,4 +1,5 @@
 import * as React from "react";
+import { ArrowDown } from "lucide-react";
 import { Virtuoso, type VirtuosoHandle } from "react-virtuoso";
 
 import { MessageItem } from "@/components/chat/MessageItem";
@@ -29,6 +30,16 @@ export function MessageList({ messages, isLoading, isStreaming, sessionKey }: Me
     []
   );
   const [visibleEnd, setVisibleEnd] = React.useState(0);
+  // 生成期间是否跟随新内容贴底：用户主动往上翻即关闭，翻回底部/点「回到底部」/发新问题时恢复
+  // 用 ref 而非 state：贴底判断发生在高度变化回调里，必须读到同步最新值
+  const followRef = React.useRef(true);
+  // 用户是否离开了底部（驱动「回到底部」按钮）；hasNew 表示离开期间又有新内容
+  const [detached, setDetached] = React.useState(false);
+  const [hasNew, setHasNew] = React.useState(false);
+  // 只有用户自己的操作（滚轮/触摸/键盘/拖滚动条或拖选）引起的滚动才用来判断「离开底部」，
+  // 程序贴底、内容收缩导致的 scrollTop 变化不算
+  const lastUserInputRef = React.useRef(0);
+  const pointerDownRef = React.useRef(false);
 
   const userQuestions = React.useMemo<QuestionRailItem[]>(() => {
     const items: QuestionRailItem[] = [];
@@ -55,6 +66,9 @@ export function MessageList({ messages, isLoading, isStreaming, sessionKey }: Me
   }, [userQuestions, visibleEnd]);
 
   const handleSelectQuestion = React.useCallback((flatIndex: number) => {
+    // 主动跳到历史问题：停止跟随，否则生成中的新内容会把视图拽回底部
+    followRef.current = false;
+    setDetached(true);
     virtuosoRef.current?.scrollToIndex({
       index: flatIndex,
       align: "start",
@@ -88,6 +102,9 @@ export function MessageList({ messages, isLoading, isStreaming, sessionKey }: Me
     if (lastSessionRef.current !== nextKey) {
       lastSessionRef.current = nextKey;
       pendingScrollRef.current = true;
+      followRef.current = true;
+      setDetached(false);
+      setHasNew(false);
       if (settleTimerRef.current) {
         window.clearTimeout(settleTimerRef.current);
         settleTimerRef.current = null;
@@ -99,11 +116,18 @@ export function MessageList({ messages, isLoading, isStreaming, sessionKey }: Me
     const wasStreaming = prevStreamingRef.current;
     prevStreamingRef.current = isStreaming;
     if (!wasStreaming && isStreaming) {
+      // 用户刚发出新问题：无论之前翻到哪，都回到底部看这一轮
+      followRef.current = true;
+      setDetached(false);
+      setHasNew(false);
       stickToBottom();
       const timer = window.setTimeout(stickToBottom, 120);
       return () => window.clearTimeout(timer);
     }
     if (wasStreaming && !isStreaming) {
+      if (!followRef.current) {
+        return;
+      }
       scrollToBottom();
       const timer = window.setTimeout(scrollToBottom, 120);
       const lateTimer = window.setTimeout(scrollToBottom, 360);
@@ -212,13 +236,18 @@ export function MessageList({ messages, isLoading, isStreaming, sessionKey }: Me
     if (isLoading) {
       return;
     }
-    const shouldStick = isStreaming || pendingScrollRef.current;
+    if (isStreaming && !followRef.current) {
+      setHasNew(true);
+    }
+    const shouldStick = (isStreaming && followRef.current) || pendingScrollRef.current;
     if (!shouldStick) return;
     if (heightScrollRafRef.current) {
       return;
     }
     heightScrollRafRef.current = window.requestAnimationFrame(() => {
       heightScrollRafRef.current = null;
+      // 排队期间用户可能已经往上翻，执行前再确认一次
+      if (isStreaming && !followRef.current && !pendingScrollRef.current) return;
       if (isStreaming) {
         stickToBottom();
       } else {
@@ -226,6 +255,94 @@ export function MessageList({ messages, isLoading, isStreaming, sessionKey }: Me
       }
     });
   }, [isStreaming, isLoading, scrollToBottom, stickToBottom]);
+
+  const markUserInput = React.useCallback(() => {
+    lastUserInputRef.current = performance.now();
+  }, []);
+
+  // 往上的操作立即关闭跟随（同步生效，抢在下一次贴底之前）；是否真的离开底部交给滚动事件按距离判定
+  const handleWheel = React.useCallback(
+    (event: React.WheelEvent<HTMLDivElement>) => {
+      markUserInput();
+      if (event.deltaY < 0) followRef.current = false;
+    },
+    [markUserInput]
+  );
+
+  const touchYRef = React.useRef<number | null>(null);
+  const handleTouchStart = React.useCallback(
+    (event: React.TouchEvent<HTMLDivElement>) => {
+      markUserInput();
+      touchYRef.current = event.touches[0]?.clientY ?? null;
+    },
+    [markUserInput]
+  );
+  const handleTouchMove = React.useCallback(
+    (event: React.TouchEvent<HTMLDivElement>) => {
+      markUserInput();
+      const y = event.touches[0]?.clientY;
+      // 手指往下拖 = 内容往上翻
+      if (y != null && touchYRef.current != null && y > touchYRef.current) {
+        followRef.current = false;
+      }
+      touchYRef.current = y ?? null;
+    },
+    [markUserInput]
+  );
+
+  const handleKeyDown = React.useCallback(
+    (event: React.KeyboardEvent<HTMLDivElement>) => {
+      const upKeys = ["ArrowUp", "PageUp", "Home"];
+      const downKeys = ["ArrowDown", "PageDown", "End", " "];
+      if (upKeys.includes(event.key) || (event.key === " " && event.shiftKey)) {
+        markUserInput();
+        followRef.current = false;
+      } else if (downKeys.includes(event.key)) {
+        markUserInput();
+      }
+    },
+    [markUserInput]
+  );
+
+  const handlePointerDown = React.useCallback(() => {
+    pointerDownRef.current = true;
+    markUserInput();
+    const release = () => {
+      pointerDownRef.current = false;
+      window.removeEventListener("pointerup", release);
+      window.removeEventListener("pointercancel", release);
+    };
+    window.addEventListener("pointerup", release);
+    window.addEventListener("pointercancel", release);
+  }, [markUserInput]);
+
+  // scroll 不冒泡，但捕获阶段会经过祖先节点，故在外层用 onScrollCapture 监听虚拟列表的滚动容器
+  const handleScrollCapture = React.useCallback((event: React.UIEvent<HTMLDivElement>) => {
+    const scroller = scrollerRef.current;
+    if (!scroller || event.target !== scroller) return;
+    const byUser =
+      pointerDownRef.current || performance.now() - lastUserInputRef.current < 300;
+    if (!byUser) return;
+    const distance = scroller.scrollHeight - scroller.scrollTop - scroller.clientHeight;
+    const away = distance > 48;
+    followRef.current = !away;
+    setDetached(away);
+    if (!away) setHasNew(false);
+  }, []);
+
+  const jumpToBottom = React.useCallback(() => {
+    followRef.current = true;
+    setDetached(false);
+    setHasNew(false);
+    const scroller = scrollerRef.current;
+    if (!scroller) return;
+    const reduceMotion = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+    scroller.scrollTo({ top: scroller.scrollHeight, behavior: reduceMotion ? "auto" : "smooth" });
+    // 虚拟列表对未渲染条目的高度是估算的，平滑滚动结束后按真实高度补一次精确贴底
+    window.setTimeout(() => {
+      if (followRef.current) scrollToBottom();
+    }, 450);
+  }, [scrollToBottom]);
 
   // Intercept triple-click at mousedown phase to prevent browser from
   // extending paragraph selection across sibling message boundaries.
@@ -274,7 +391,15 @@ export function MessageList({ messages, isLoading, isStreaming, sessionKey }: Me
   }
 
   return (
-    <div className="relative h-full">
+    <div
+      className="relative h-full"
+      onWheel={handleWheel}
+      onTouchStart={handleTouchStart}
+      onTouchMove={handleTouchMove}
+      onKeyDown={handleKeyDown}
+      onPointerDown={handlePointerDown}
+      onScrollCapture={handleScrollCapture}
+    >
       <Virtuoso
         key={sessionKey ?? "empty"}
         ref={virtuosoRef}
@@ -301,6 +426,23 @@ export function MessageList({ messages, isLoading, isStreaming, sessionKey }: Me
           </div>
         )}
       />
+      {detached ? (
+        <button
+          type="button"
+          onClick={jumpToBottom}
+          className={cn(
+            "absolute bottom-3 left-1/2 z-20 inline-flex -translate-x-1/2 items-center gap-1.5 rounded-full border bg-white px-3 py-1.5 text-xs shadow-[0_4px_14px_rgba(0,0,0,0.08)] transition-colors",
+            "animate-pop-in motion-reduce:animate-none active:scale-95",
+            hasNew
+              ? "border-[#BFDBFE] text-[#2563EB] hover:bg-[#EFF6FF]"
+              : "border-[#E5E5E5] text-[#666666] hover:bg-[#F5F5F5]"
+          )}
+          aria-label={hasNew ? "有新内容，回到底部" : "回到底部"}
+        >
+          <ArrowDown className="h-3.5 w-3.5" />
+          {hasNew ? "有新内容" : "回到底部"}
+        </button>
+      ) : null}
       <QuestionRail
         items={userQuestions}
         activeId={activeQuestionId}

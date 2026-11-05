@@ -129,6 +129,17 @@ async function streamWithRetry(
   const retryCount = options.retryCount ?? 2;
   const retryDelayMs = options.retryDelayMs ?? 600;
 
+  // 一旦收到过任何事件就不再自动重试：GET 重发等于把同一个问题再问一遍，
+  // 后端会再生成一轮，前端则会把两次输出拼在同一条回答里
+  let received = false;
+  const trackedHandlers: StreamHandlers = {
+    ...handlers,
+    onEvent: (event, payload) => {
+      received = true;
+      handlers.onEvent?.(event, payload);
+    }
+  };
+
   let attempt = 0;
   while (attempt <= retryCount) {
     try {
@@ -145,14 +156,14 @@ async function streamWithRetry(
         throw new Error(`SSE 请求失败（${response.status}）`);
       }
 
-      await readSseStream(response, handlers, signal);
+      await readSseStream(response, trackedHandlers, signal);
       return;
     } catch (error) {
       const err = error as Error;
       if (signal?.aborted) {
         throw err;
       }
-      if (attempt >= retryCount) {
+      if (attempt >= retryCount || received) {
         throw err;
       }
       await new Promise((resolve) => setTimeout(resolve, retryDelayMs * Math.pow(2, attempt)));

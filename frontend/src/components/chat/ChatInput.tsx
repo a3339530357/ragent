@@ -1,5 +1,5 @@
 import * as React from "react";
-import { Brain, Lightbulb, Send, Square } from "lucide-react";
+import { Brain, Lightbulb, Loader2, Send, Square } from "lucide-react";
 
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
@@ -14,6 +14,7 @@ export function ChatInput() {
     sendMessage,
     isStreaming,
     cancelGeneration,
+    cancelRequested,
     deepThinkingEnabled,
     setDeepThinkingEnabled,
     inputFocusKey
@@ -44,6 +45,7 @@ export function ChatInput() {
 
   const handleSubmit = async () => {
     if (isStreaming) {
+      if (cancelRequested) return;
       cancelGeneration();
       focusInput();
       return;
@@ -57,6 +59,7 @@ export function ChatInput() {
   };
 
   const hasContent = value.trim().length > 0;
+  const isStopping = isStreaming && cancelRequested;
 
   return (
     <div className="space-y-4">
@@ -123,18 +126,30 @@ export function ChatInput() {
           <button
             type="button"
             onClick={handleSubmit}
-            disabled={!hasContent && !isStreaming}
-            aria-label={isStreaming ? "停止生成" : "发送消息"}
+            disabled={(!hasContent && !isStreaming) || isStopping}
+            aria-label={isStopping ? "正在停止" : isStreaming ? "停止生成" : "发送消息"}
+            aria-busy={isStopping}
             className={cn(
-              "ml-auto rounded-full p-2.5 transition-all duration-200",
-              isStreaming
-                ? "bg-[#FEE2E2] text-[#EF4444] hover:bg-[#FECACA]"
-                : hasContent
-                  ? "bg-[#3B82F6] text-white hover:bg-[#2563EB]"
-                  : "cursor-not-allowed bg-[#F5F5F5] text-[#CCCCCC]"
+              "ml-auto inline-flex h-9 items-center justify-center gap-1.5 rounded-full transition-all duration-150",
+              isStopping
+                ? "cursor-wait bg-[#F5F5F5] px-3 text-xs font-medium text-[#666666]"
+                : isStreaming
+                  ? "w-9 bg-[#FEE2E2] text-[#EF4444] hover:bg-[#FECACA] active:scale-95"
+                  : hasContent
+                    ? "w-9 bg-[#3B82F6] text-white hover:bg-[#2563EB] active:scale-95"
+                    : "w-9 cursor-not-allowed bg-[#F5F5F5] text-[#CCCCCC]"
             )}
           >
-            {isStreaming ? <Square className="h-4 w-4" /> : <Send className="h-4 w-4" />}
+            {isStopping ? (
+              <>
+                <Loader2 className="h-3.5 w-3.5 animate-spin motion-reduce:animate-none" />
+                停止中
+              </>
+            ) : isStreaming ? (
+              <Square className="h-4 w-4" />
+            ) : (
+              <Send className="h-4 w-4" />
+            )}
           </button>
         </div>
       </div>
@@ -153,7 +168,11 @@ export function ChatInput() {
           Shift + Enter
         </kbd>{" "}
         换行
-        {isStreaming ? <span className="ml-2 animate-pulse-soft">生成中...</span> : null}
+        {isStreaming ? (
+          <span className="ml-2 animate-pulse-soft motion-reduce:animate-none">
+            {isStopping ? "正在停止..." : "生成中..."}
+          </span>
+        ) : null}
       </p>
     </div>
   );
