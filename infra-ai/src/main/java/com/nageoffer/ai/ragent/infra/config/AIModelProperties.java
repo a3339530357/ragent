@@ -17,6 +17,8 @@
 
 package com.nageoffer.ai.ragent.infra.config;
 
+import com.nageoffer.ai.ragent.framework.runtime.RuntimeConfigContext;
+
 import com.nageoffer.ai.ragent.infra.enums.ThinkingParam;
 import lombok.Data;
 import org.springframework.boot.context.properties.ConfigurationProperties;
@@ -235,5 +237,35 @@ public class AIModelProperties {
          * 消息分块大小
          */
         private Integer messageChunkSize = 5;
+    }
+
+    // 优先读取本次任务固定的版本，未发布时沿用启动配置。
+    public Map<String, ProviderConfig> getProviders() {
+        AIModelProperties current = RuntimeConfigContext.section(AIModelProperties.class);
+        return current == null ? providers : current.providers;
+    }
+    public ModelGroup getChat() {
+        AIModelProperties current = RuntimeConfigContext.section(AIModelProperties.class);
+        return current == null ? chat : current.chat;
+    }
+    public ModelGroup getEmbedding() {
+        AIModelProperties current = RuntimeConfigContext.section(AIModelProperties.class);
+        return current == null ? embedding : current.embedding;
+    }
+    public ModelGroup getRerank() {
+        AIModelProperties current = RuntimeConfigContext.section(AIModelProperties.class);
+        return current == null ? rerank : current.rerank;
+    }
+    public ModelGroup getVlm() {
+        AIModelProperties current = RuntimeConfigContext.section(AIModelProperties.class);
+        return current == null ? vlm : current.vlm;
+    }
+    public Selection getSelection() {
+        AIModelProperties current = RuntimeConfigContext.section(AIModelProperties.class);
+        return current == null ? selection : current.selection;
+    }
+    public Stream getStream() {
+        AIModelProperties current = RuntimeConfigContext.section(AIModelProperties.class);
+        return current == null ? stream : current.stream;
     }
 }

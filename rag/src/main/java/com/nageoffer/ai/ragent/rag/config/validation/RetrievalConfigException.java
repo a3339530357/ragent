@@ -24,11 +24,10 @@ import java.util.List;
 /**
  * 检索通道配置矛盾异常
  * <p>
- * 由 {@link RetrievalConfigEnvironmentPostProcessor} 在环境就绪阶段抛出，中断启动；
+ * 由运行时配置中心校验生效配置时抛出，中断启动或拒绝发布；
  * 携带全部违规交由 {@link RetrievalConfigFailureAnalyzer} 渲染成 APPLICATION FAILED TO START 诊断框
  * <p>
- * 有意为纯 {@link RuntimeException} 而非项目内 ServiceException：此为启动期配置错误，
- * 早于 Web 容器与全局异常处理器，不该走业务异常那套错误码 / HTTP 映射
+ * 配置中心的校验接口将其转换为可展示的校验结果，启动时保留诊断框
  */
 @Getter
 public class RetrievalConfigException extends RuntimeException {

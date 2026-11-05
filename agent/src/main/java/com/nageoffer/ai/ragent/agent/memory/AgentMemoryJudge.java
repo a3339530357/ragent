@@ -53,6 +53,7 @@ import java.util.Map;
 @Component
 @ConditionalOnAgentEngine
 @RequiredArgsConstructor
+@com.nageoffer.ai.ragent.framework.runtime.RuntimeConfigBoundary
 public class AgentMemoryJudge {
 
     private static final Duration JUDGE_TIMEOUT = Duration.ofSeconds(120);

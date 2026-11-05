@@ -17,6 +17,8 @@
 
 package com.nageoffer.ai.ragent.rag.config;
 
+import com.nageoffer.ai.ragent.framework.runtime.RuntimeConfigContext;
+
 import lombok.Data;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Configuration;
@@ -79,4 +81,22 @@ public class RAGConfigProperties {
      */
     @Value("${rag.citation.enabled:false}")
     private Boolean citationEnabled;
+
+    // 优先读取本次任务固定的版本，未发布时沿用启动配置。
+    public Boolean getQueryRewriteEnabled() {
+        RAGConfigProperties current = RuntimeConfigContext.section(RAGConfigProperties.class);
+        return current == null ? queryRewriteEnabled : current.queryRewriteEnabled;
+    }
+    public Boolean getRerankEnabled() {
+        RAGConfigProperties current = RuntimeConfigContext.section(RAGConfigProperties.class);
+        return current == null ? rerankEnabled : current.rerankEnabled;
+    }
+    public Boolean getContextEnrichEnabled() {
+        RAGConfigProperties current = RuntimeConfigContext.section(RAGConfigProperties.class);
+        return current == null ? contextEnrichEnabled : current.contextEnrichEnabled;
+    }
+    public Boolean getCitationEnabled() {
+        RAGConfigProperties current = RuntimeConfigContext.section(RAGConfigProperties.class);
+        return current == null ? citationEnabled : current.citationEnabled;
+    }
 }

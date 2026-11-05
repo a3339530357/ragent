@@ -39,6 +39,7 @@ import java.util.stream.Collectors;
  */
 @Service
 @Primary
+@com.nageoffer.ai.ragent.framework.runtime.RuntimeConfigBoundary
 public class RoutingEmbeddingService implements EmbeddingService {
 
     private final ModelSelector selector;

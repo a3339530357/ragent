@@ -17,6 +17,8 @@
 
 package com.nageoffer.ai.ragent.agent.service.impl;
 
+import com.nageoffer.ai.ragent.framework.runtime.RuntimeConfigContext;
+
 import cn.hutool.core.util.IdUtil;
 import cn.hutool.core.util.StrUtil;
 import com.nageoffer.ai.ragent.agent.config.ConditionalOnAgentEngine;
@@ -79,6 +81,7 @@ public class AgentChatServiceImpl implements AgentChatService {
     private final AgentMemoryLearner memoryLearner;
 
     @Override
+    @com.nageoffer.ai.ragent.framework.runtime.RuntimeConfigBoundary
     public void streamChat(String question, String conversationId, SseEmitter emitter) {
         String userId = UserContext.getUserId();
         String actualConversationId = StrUtil.isBlank(conversationId)
@@ -100,6 +103,7 @@ public class AgentChatServiceImpl implements AgentChatService {
     }
 
     @Override
+    @com.nageoffer.ai.ragent.framework.runtime.RuntimeConfigBoundary
     public void confirmPendingTool(String conversationId, String messageId, boolean approved, SseEmitter emitter) {
         String userId = UserContext.getUserId();
         if (StrUtil.isBlank(conversationId) || StrUtil.isBlank(messageId)) {
@@ -245,9 +249,15 @@ public class AgentChatServiceImpl implements AgentChatService {
             Flux<AgentEvent> events = agent.streamEvents(input, runtimeContext)
                     // 让 runHandle 知道框架流已结束，取消时不必再强行断流
                     .doFinally(signal -> runHandle.markUpstreamTerminated());
+            var configSnapshot = RuntimeConfigContext.current();
+            if (configSnapshot != null) {
+                runtimeContext.put(RuntimeConfigContext.KEY, configSnapshot);
+                events = events.contextWrite(context -> context.put(RuntimeConfigContext.KEY, configSnapshot));
+            }
+            Flux<AgentEvent> pinnedEvents = events;
             runHandle.start(() -> {
                 settleConfirmCard(scope);
-                Disposable disposable = events.subscribe(bridge::onEvent, bridge::onError, bridge::onComplete);
+                Disposable disposable = pinnedEvents.subscribe(bridge::onEvent, bridge::onError, bridge::onComplete);
                 runHandle.bindStream(disposable, () -> agent.interrupt(userId, conversationId));
                 taskManager.bindHandle(taskId, runHandle::interruptUpstream);
             });
@@ -342,7 +352,11 @@ public class AgentChatServiceImpl implements AgentChatService {
      */
     private void scheduleMemoryExtraction(String userId, String conversationId) {
         // 结果日志在 AgentMemoryLearner 里打；用户已拿到答复，这里只记意外异常
-        Mono.fromCallable(() -> memoryLearner.learn(userId))
+        Mono.fromCallable(() -> {
+                    try (var ignored = RuntimeConfigContext.use(RuntimeConfigContext.active())) {
+                        return memoryLearner.learn(userId);
+                    }
+                })
                 .subscribeOn(Schedulers.boundedElastic())
                 .subscribe(outcome -> {
                 }, e -> log.error("轮次结束后台记忆抽取异常, userId: {}, conversationId: {}", userId, conversationId, e));

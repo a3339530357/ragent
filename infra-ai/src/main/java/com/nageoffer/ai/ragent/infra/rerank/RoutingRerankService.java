@@ -37,6 +37,7 @@ import java.util.stream.Collectors;
  */
 @Service
 @Primary
+@com.nageoffer.ai.ragent.framework.runtime.RuntimeConfigBoundary
 public class RoutingRerankService implements RerankService {
 
     private final ModelSelector selector;

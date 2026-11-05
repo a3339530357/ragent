@@ -32,6 +32,7 @@ import java.util.Map;
 @Builder
 public class SystemSettingsVO {
 
+    private Long runtimeConfigVersion;
     private EngineSettings engine;
     private BackendSettings backends;
     private RagSettings rag;

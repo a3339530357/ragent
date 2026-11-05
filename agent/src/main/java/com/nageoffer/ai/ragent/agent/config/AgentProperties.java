@@ -17,6 +17,8 @@
 
 package com.nageoffer.ai.ragent.agent.config;
 
+import com.nageoffer.ai.ragent.framework.runtime.RuntimeConfigContext;
+
 import com.nageoffer.ai.ragent.framework.web.StreamTaskManager;
 import com.nageoffer.ai.ragent.infra.enums.ThinkingEffort;
 import jakarta.validation.constraints.AssertTrue;
@@ -87,5 +89,11 @@ public class AgentProperties {
          * 只影响主对话循环；记忆仲裁、对话摘要等后台调用始终关闭思考
          */
         private ThinkingEffort thinkingEffort;
+    }
+
+    // 优先读取本次任务固定的版本，未发布时沿用启动配置。
+    public Chat getChat() {
+        Chat current = RuntimeConfigContext.section(Chat.class);
+        return current == null ? chat : current;
     }
 }

@@ -24,7 +24,6 @@ import com.nageoffer.ai.ragent.rag.core.retrieval.channel.SearchChannelResult;
 import com.nageoffer.ai.ragent.rag.core.retrieval.channel.SearchContext;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.InitializingBean;
 import org.springframework.stereotype.Component;
 
 import java.util.List;
@@ -38,7 +37,7 @@ import java.util.List;
 @Slf4j
 @Component
 @RequiredArgsConstructor
-public class EvidenceGatePostProcessor implements SearchResultPostProcessor, InitializingBean {
+public class EvidenceGatePostProcessor implements SearchResultPostProcessor {
 
     private final SearchChannelProperties searchChannelProperties;
     private final RAGConfigProperties ragConfigProperties;
@@ -46,7 +45,7 @@ public class EvidenceGatePostProcessor implements SearchResultPostProcessor, Ini
     /**
      * 闸门的唯一判据来自精排
      */
-    @Override
+    // 启动与发布均由配置中心在候选快照下调用。
     public void afterPropertiesSet() {
         double minRerankScore = searchChannelProperties.getEvidence().getMinRerankScore();
         if (minRerankScore > 0 && Boolean.FALSE.equals(ragConfigProperties.getRerankEnabled())) {

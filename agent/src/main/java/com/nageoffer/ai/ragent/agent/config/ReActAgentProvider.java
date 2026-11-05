@@ -54,7 +54,7 @@ public class ReActAgentProvider {
 
     private final AgentPromptResolver agentPromptResolver;
     private final AgentToolCatalog toolCatalog;
-    private final OpenAIChatModel agentChatModel;
+    private final io.agentscope.core.model.Model agentChatModel;
     private final PgAgentStateStore agentStateStore;
     private final AgentProperties agentProperties;
     private final AgentUserMemoryMiddleware userMemoryMiddleware;
@@ -86,13 +86,19 @@ public class ReActAgentProvider {
             ReActAgent agent = buildAgent(persona, catalog);
             ActiveAgent activeAgent = new ActiveAgent(agent, catalog);
 
-            cached = new CachedAgent(persona, activeAgent);
+            cached = new CachedAgent(persona, activeAgent, runtimeVersion());
             return activeAgent;
         }
     }
 
+    private long runtimeVersion() {
+        var snapshot = com.nageoffer.ai.ragent.framework.runtime.RuntimeConfigContext.current();
+        return snapshot == null ? 0 : snapshot.version();
+    }
+
     private boolean matches(CachedAgent current, String persona, ResolvedCatalog catalog) {
         return current != null
+                && current.version() == runtimeVersion()
                 && current.persona().equals(persona)
                 && current.activeAgent().catalog().fingerprint().equals(catalog.fingerprint());
     }
@@ -101,7 +107,7 @@ public class ReActAgentProvider {
         ReActAgent.Builder builder = ReActAgent.builder()
                 .name(AGENT_NAME)
                 .sysPrompt(persona)
-                .model(agentChatModel)
+                .model(agentChatModel instanceof RuntimeAgentModel runtime ? runtime.currentModel() : agentChatModel)
                 .toolkit(toolCatalog.buildToolkit(catalog))
                 .maxIters(agentProperties.getMaxIters())
                 .maxRetries(agentProperties.getMaxRetries())
@@ -141,6 +147,6 @@ public class ReActAgentProvider {
     /**
      * Provider 内部的缓存条目：persona 用于判断缓存是否过期，ActiveAgent 是对外使用的快照
      */
-    private record CachedAgent(String persona, ActiveAgent activeAgent) {
+    private record CachedAgent(String persona, ActiveAgent activeAgent, long version) {
     }
 }

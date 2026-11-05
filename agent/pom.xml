@@ -13,6 +13,10 @@
 
     <dependencies>
         <dependency>
+            <groupId>io.micrometer</groupId>
+            <artifactId>context-propagation</artifactId>
+        </dependency>
+        <dependency>
             <groupId>com.nageoffer.ai</groupId>
             <artifactId>rag</artifactId>
             <version>${project.version}</version>

@@ -22,7 +22,6 @@ import com.nageoffer.ai.ragent.infra.config.AIModelProperties;
 import com.nageoffer.ai.ragent.infra.enums.Tier;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.InitializingBean;
 import org.springframework.stereotype.Component;
 
 import java.util.ArrayList;
@@ -42,11 +41,11 @@ import java.util.Set;
 @Slf4j
 @Component
 @RequiredArgsConstructor
-public class ChatTierConfigValidator implements InitializingBean {
+public class ChatTierConfigValidator {
 
     private final AIModelProperties properties;
 
-    @Override
+    // 启动与发布均由配置中心在候选快照下调用。
     public void afterPropertiesSet() {
         AIModelProperties.ModelGroup group = properties.getChat();
         if (group == null) {

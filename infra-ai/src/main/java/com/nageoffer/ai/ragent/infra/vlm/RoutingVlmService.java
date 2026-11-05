@@ -53,6 +53,7 @@ import java.util.List;
 @Slf4j
 @Service
 @Primary
+@com.nageoffer.ai.ragent.framework.runtime.RuntimeConfigBoundary
 public class RoutingVlmService implements VlmService {
 
     private static final String LABEL = "vlm";
@@ -69,7 +70,11 @@ public class RoutingVlmService implements VlmService {
     @Override
     @RagTraceNode(name = "vlm-describe", type = "VLM")
     public String describeImage(byte[] imageBytes, String mime, String prompt, Integer maxOutputTokens) {
-        ModelTarget target = resolveTarget();
+        return describeImageUsingTarget(imageBytes, mime, prompt, maxOutputTokens, resolveTarget());
+    }
+
+    /** 连接测试显式指定候选，避免把实际测试请求路由到默认模型。 */
+    public String describeImageUsingTarget(byte[] imageBytes, String mime, String prompt, Integer maxOutputTokens, ModelTarget target) {
         AIModelProperties.ProviderConfig provider = HttpResponseHelper.requireProvider(target, LABEL);
         HttpResponseHelper.requireApiKey(provider, LABEL);
 
@@ -84,7 +89,9 @@ public class RoutingVlmService implements VlmService {
                 .build();
 
         JsonObject respJson;
-        try (Response response = syncHttpClient.newCall(request).execute()) {
+        okhttp3.Call call = syncHttpClient.newCall(request);
+        if (target.timeoutMs() != null) call.timeout().timeout(target.timeoutMs(), java.util.concurrent.TimeUnit.MILLISECONDS);
+        try (Response response = call.execute()) {
             if (!response.isSuccessful()) {
                 String body = HttpResponseHelper.readBody(response.body());
                 log.warn("VLM 请求失败: status={}, body={}", response.code(), body);

@@ -48,13 +48,14 @@ public class RAGChatServiceImpl implements RAGChatService {
     private final StreamTaskManager taskManager;
 
     @Override
+    @com.nageoffer.ai.ragent.framework.runtime.RuntimeConfigBoundary
     public void streamChat(String question, String conversationId, Boolean deepThinking, SseEmitter emitter) {
         String actualConversationId = StrUtil.isBlank(conversationId) ? IdUtil.getSnowflakeNextIdStr() : conversationId;
         String taskId = IdUtil.getSnowflakeNextIdStr();
         StreamCallback callback = callbackFactory.createChatEventHandler(emitter, actualConversationId, taskId);
 
         chatQueueLimiter.enqueue(question, actualConversationId, emitter,
-                () -> traceRunner.run(question, actualConversationId, taskId, callback, traceAware -> {
+                com.nageoffer.ai.ragent.framework.runtime.RuntimeConfigContext.wrap(() -> traceRunner.run(question, actualConversationId, taskId, callback, traceAware -> {
                     StreamChatContext ctx = StreamChatContext.builder()
                             .question(question)
                             .conversationId(actualConversationId)
@@ -64,7 +65,7 @@ public class RAGChatServiceImpl implements RAGChatService {
                             .callback(traceAware)
                             .build();
                     chatPipeline.execute(ctx);
-                }));
+                })));
     }
 
     @Override

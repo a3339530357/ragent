@@ -68,6 +68,7 @@ public class AgentMemoryLearner {
     /**
      * 拿不到锁就留给下次触发
      */
+    @com.nageoffer.ai.ragent.framework.runtime.RuntimeConfigBoundary
     public AgentMemoryOutcome learn(String userId) {
         if (!memoryProperties.isLongTermEnabled()) {
             return AgentMemoryOutcome.of(Status.DISABLED);

@@ -73,6 +73,7 @@ import java.util.stream.Collectors;
 @Slf4j
 @Service
 @RequiredArgsConstructor
+@com.nageoffer.ai.ragent.framework.runtime.RuntimeConfigBoundary
 public class KnowledgeChunkServiceImpl implements KnowledgeChunkService {
 
     private final KnowledgeChunkMapper chunkMapper;

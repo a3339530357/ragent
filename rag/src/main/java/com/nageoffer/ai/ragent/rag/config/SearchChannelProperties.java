@@ -17,9 +17,10 @@
 
 package com.nageoffer.ai.ragent.rag.config;
 
+import com.nageoffer.ai.ragent.framework.runtime.RuntimeConfigContext;
+
 import com.nageoffer.ai.ragent.rag.constant.RAGConstant;
 import lombok.Data;
-import org.springframework.beans.factory.InitializingBean;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.stereotype.Component;
 
@@ -33,7 +34,7 @@ import org.springframework.stereotype.Component;
 @Data
 @Component
 @ConfigurationProperties(prefix = "rag.search")
-public class SearchChannelProperties implements InitializingBean {
+public class SearchChannelProperties {
 
     /**
      * 默认最终进 LLM 的条数（检索预算的 contextTopK 段）
@@ -74,7 +75,7 @@ public class SearchChannelProperties implements InitializingBean {
      * 解析召回扇出基数：优先使用显式 recallBudget，未配置（<=0）时回退到最终条数
      */
     public int resolveRecallBudget(int contextTopK) {
-        return recallBudget > 0 ? recallBudget : contextTopK;
+        return getRecallBudget() > 0 ? getRecallBudget() : contextTopK;
     }
 
     /**
@@ -82,7 +83,7 @@ public class SearchChannelProperties implements InitializingBean {
      * 违反意味着「召回还没最终条数多」或「送进 Rerank 的候选还没最终条数多」，Rerank 无从产出足量结果，
      * 属配置矛盾，启动即失败胜过线上悄悄少召回
      */
-    @Override
+    // 启动与发布均由配置中心在候选快照下调用。
     public void afterPropertiesSet() {
         int contextTopK = defaultTopK;
         if (contextTopK <= 0) {
@@ -339,5 +340,31 @@ public class SearchChannelProperties implements InitializingBean {
          * <=0 关闭；无分可读时（精排关闭或降级 noop）放行
          */
         private double minRerankScore = 0.2;
+    }
+
+    // 优先读取本次任务固定的版本，未发布时沿用启动配置。
+    public int getDefaultTopK() {
+        SearchChannelProperties current = RuntimeConfigContext.section(SearchChannelProperties.class);
+        return current == null ? defaultTopK : current.defaultTopK;
+    }
+    public int getRecallBudget() {
+        SearchChannelProperties current = RuntimeConfigContext.section(SearchChannelProperties.class);
+        return current == null ? recallBudget : current.recallBudget;
+    }
+    public Scope getScope() {
+        SearchChannelProperties current = RuntimeConfigContext.section(SearchChannelProperties.class);
+        return current == null ? scope : current.scope;
+    }
+    public Channels getChannels() {
+        SearchChannelProperties current = RuntimeConfigContext.section(SearchChannelProperties.class);
+        return current == null ? channels : current.channels;
+    }
+    public Fusion getFusion() {
+        SearchChannelProperties current = RuntimeConfigContext.section(SearchChannelProperties.class);
+        return current == null ? fusion : current.fusion;
+    }
+    public Evidence getEvidence() {
+        SearchChannelProperties current = RuntimeConfigContext.section(SearchChannelProperties.class);
+        return current == null ? evidence : current.evidence;
     }
 }

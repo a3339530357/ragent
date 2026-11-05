@@ -52,6 +52,7 @@ import static com.nageoffer.ai.ragent.rag.constant.RAGConstant.MULTI_CHANNEL_KEY
 @Slf4j
 @Service
 @RequiredArgsConstructor
+@com.nageoffer.ai.ragent.framework.runtime.RuntimeConfigBoundary
 public class RetrievalEngine {
 
     private final SearchChannelProperties searchProperties;

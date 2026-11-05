@@ -1,4 +1,5 @@
 import type { ComponentType, ReactNode } from "react";
+import { RuntimeSettingsPanel } from "./RuntimeSettingsPanel";
 import { useEffect, useState } from "react";
 import {
   AlertCircle,
@@ -313,7 +314,7 @@ function LoadingSkeleton() {
       <div className="admin-page-header">
         <div>
           <h1 className="admin-page-title">系统配置</h1>
-          <p className="admin-page-subtitle">application.yaml 运行时生效配置的只读视图</p>
+          <p className="admin-page-subtitle">模型、检索策略与部署配置</p>
         </div>
       </div>
       <div className="settings-arch-grid">
@@ -394,7 +395,7 @@ export function SystemSettingsPage() {
       <div className="admin-page-header">
         <div>
           <h1 className="admin-page-title">系统配置</h1>
-          <p className="admin-page-subtitle">application.yaml 运行时生效配置的只读视图，修改后需重启服务</p>
+          <p className="admin-page-subtitle">模型与检索参数支持发布生效，部署配置保持只读</p>
         </div>
         <div className="admin-page-actions">
           <Button variant="outline" size="sm" onClick={() => loadSettings(true)} disabled={refreshing}>
@@ -403,6 +404,8 @@ export function SystemSettingsPage() {
           </Button>
         </div>
       </div>
+
+      <RuntimeSettingsPanel onPublished={() => void loadSettings(true)} />
 
       <Section title="架构选型" hint="引擎与四类后端组件，切换需修改 yaml 并重启">
         <div className="settings-arch-grid">

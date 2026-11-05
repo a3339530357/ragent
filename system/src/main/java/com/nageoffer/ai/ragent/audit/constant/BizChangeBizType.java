@@ -32,6 +32,7 @@ public final class BizChangeBizType {
     public static final String QUERY_TERM_MAPPING = "QUERY_TERM_MAPPING";
     public static final String SAMPLE_QUESTION = "SAMPLE_QUESTION";
     public static final String USER = "USER";
+    public static final String RUNTIME_CONFIG = "RUNTIME_CONFIG";
     public static final String AGENT_PROFILE = "AGENT_PROFILE";
     public static final String AGENT_SKILL = "AGENT_SKILL";
 }

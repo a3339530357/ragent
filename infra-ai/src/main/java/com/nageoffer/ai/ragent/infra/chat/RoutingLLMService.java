@@ -45,6 +45,7 @@ import java.util.stream.Collectors;
 @Slf4j
 @Service
 @Primary
+@com.nageoffer.ai.ragent.framework.runtime.RuntimeConfigBoundary
 public class RoutingLLMService implements LLMService {
 
     private static final String STREAM_INTERRUPTED_MESSAGE = "流式请求被中断";
@@ -59,6 +60,12 @@ public class RoutingLLMService implements LLMService {
     private final ModelRoutingExecutor executor;
     private final LlmFirstPacketProbe firstPacketProbe;
     private final Map<String, ChatClient> clientsByProvider;
+    @org.springframework.beans.factory.annotation.Autowired
+    private com.nageoffer.ai.ragent.infra.config.RuntimeChatClientRegistry runtimeClients;
+
+    private ChatClient clientFor(String provider) {
+        return runtimeClients == null ? clientsByProvider.get(provider) : runtimeClients.resolve(provider);
+    }
 
     public RoutingLLMService(
             ModelSelector selector,
@@ -80,7 +87,7 @@ public class RoutingLLMService implements LLMService {
         return executor.executeWithFallback(
                 ModelCapability.CHAT,
                 selector.selectChatCandidates(Boolean.TRUE.equals(request.getThinking())),
-                target -> clientsByProvider.get(target.candidate().getProvider()),
+                target -> clientFor(target.candidate().getProvider()),
                 (client, target) -> client.chat(request, target)
         );
     }
@@ -91,7 +98,7 @@ public class RoutingLLMService implements LLMService {
         return executor.executeWithFallback(
                 ModelCapability.CHAT,
                 selector.selectChatCandidates(Boolean.TRUE.equals(request.getThinking()), tier),
-                target -> clientsByProvider.get(target.candidate().getProvider()),
+                target -> clientFor(target.candidate().getProvider()),
                 (client, target) -> client.chat(request, target)
         );
     }
@@ -105,7 +112,7 @@ public class RoutingLLMService implements LLMService {
         return executor.executeWithFallback(
                 ModelCapability.CHAT,
                 selector.selectChatCandidates(Boolean.TRUE.equals(request.getThinking()), tier, preferredModelId),
-                target -> clientsByProvider.get(target.candidate().getProvider()),
+                target -> clientFor(target.candidate().getProvider()),
                 (client, target) -> client.chat(request, target)
         );
     }
@@ -171,7 +178,7 @@ public class RoutingLLMService implements LLMService {
     }
 
     private ChatClient resolveClient(ModelTarget target, String label) {
-        ChatClient client = clientsByProvider.get(target.candidate().getProvider());
+        ChatClient client = clientFor(target.candidate().getProvider());
         if (client == null) {
             log.warn("{} 提供商客户端缺失: provider：{}，modelId：{}",
                     label, target.candidate().getProvider(), target.id());

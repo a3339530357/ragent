@@ -88,6 +88,7 @@ const SUCCESS_OPTIONS = [
 ];
 
 const BIZ_TYPE_OPTIONS = [
+  { value: "RUNTIME_CONFIG", label: "运行时配置" },
   { value: "AGENT_PROFILE", label: "智能体" },
   { value: "AGENT_SKILL", label: "技能" },
   { value: "KNOWLEDGE_BASE", label: "知识库" },
@@ -102,6 +103,10 @@ const BIZ_TYPE_OPTIONS = [
 ];
 
 const OPERATION_OPTIONS = [
+  { value: "DRAFT", label: "保存草稿" },
+  { value: "PUBLISH", label: "发布" },
+  { value: "ROLLBACK", label: "回滚" },
+  { value: "TEST", label: "连接测试" },
   { value: "CREATE", label: "新增" },
   { value: "UPDATE", label: "修改" },
   { value: "DELETE", label: "删除" },

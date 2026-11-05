@@ -62,6 +62,7 @@ public class KnowledgeSearchFacade {
     /**
      * 检索并合成答案，供主 Agent 的 search_knowledge 工具调用
      */
+    @com.nageoffer.ai.ragent.framework.runtime.RuntimeConfigBoundary
     public String search(String query) {
         // 不喂历史：主 Agent 手握完整对话，传进来的已是消解过、且被它有意收窄的查询
         RewriteResult rewriteResult = queryRewriteService.rewriteWithSplit(query, List.of());

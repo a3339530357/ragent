@@ -50,6 +50,7 @@ import java.util.Map;
 @Component
 @ConditionalOnAgentEngine
 @RequiredArgsConstructor
+@com.nageoffer.ai.ragent.framework.runtime.RuntimeConfigBoundary
 public class AgentConversationSummarizer {
 
     /**

@@ -264,15 +264,15 @@ class AgentMemoryJudgeTest {
         assertThat(options.getMaxTokens()).isNull();
         assertThat(options.getExecutionConfig().getTimeout()).isEqualTo(Duration.ofSeconds(120));
         assertThat(options.getExecutionConfig().getMaxAttempts()).isEqualTo(2);
-        assertThat(options.getAdditionalBodyParams()).containsEntry("thinking", Map.of("type", "enabled"));
-        assertThat(options.getReasoningEffort()).isEqualTo("low");
+        assertThat(options.getAdditionalBodyParams()).containsEntry("thinking", Map.of("type", "disabled"));
+        assertThat(options.getReasoningEffort()).isNull();
     }
 
     /**
-     * 后台学习与主动整理用同一组参数：开思考、强度 low；思考内容不混进解析的原文
+     * 后台学习与主动整理用同一组参数：关闭思考；思考内容不混进解析的原文
      */
     @Test
-    void backgroundShouldEnableThinkingAndParseOnlyFinalText() {
+    void backgroundShouldDisableThinkingAndParseOnlyFinalText() {
         AgentMessageDO a1 = message("1900000000000000011", "c-A", "user", "我一直喜欢小屏");
         when(model.stream(anyList(), any(), any())).thenReturn(Flux.just(ChatResponse.builder().content(List.of(
                         ThinkingBlock.builder().thinking("{\"decisions\":[{\"action\":\"DELETE\"}]}").build(),
@@ -282,8 +282,8 @@ class AgentMemoryJudgeTest {
         assertThat(judge.judgeBackground(List.of(), List.of(a1), List.of()).decisions()).isEmpty();
 
         GenerateOptions options = captureOptions();
-        assertThat(options.getAdditionalBodyParams()).containsEntry("thinking", Map.of("type", "enabled"));
-        assertThat(options.getReasoningEffort()).isEqualTo("low");
+        assertThat(options.getAdditionalBodyParams()).containsEntry("thinking", Map.of("type", "disabled"));
+        assertThat(options.getReasoningEffort()).isNull();
         assertThat(options.getStream()).isFalse();
         assertThat(options.getExecutionConfig().getTimeout()).isEqualTo(Duration.ofSeconds(120));
     }
@@ -313,7 +313,7 @@ class AgentMemoryJudgeTest {
         gateway.setThinkingParam(ThinkingParam.REASONING_EFFORT);
         aiModelProperties.setProviders(Map.of("zhipu", gateway));
         agentProperties.getChat().setProvider("zhipu");
-        answer("[]");
+        answer(EMPTY);
 
         judge.judgeFlush(List.of(), REQUEST, List.of(), List.of());
 
@@ -325,7 +325,7 @@ class AgentMemoryJudgeTest {
     @Test
     void shouldNotSendThinkingParamToUndeclaredProviders() {
         agentProperties.getChat().setProvider("brand-new-gateway");
-        answer("[]");
+        answer(EMPTY);
 
         judge.judgeFlush(List.of(), REQUEST, List.of(), List.of());
 

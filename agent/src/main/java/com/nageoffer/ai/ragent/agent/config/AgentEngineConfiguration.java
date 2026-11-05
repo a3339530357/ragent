@@ -47,7 +47,11 @@ public class AgentEngineConfiguration {
     private final ModelRequestDumpWriter requestDumpWriter;
 
     @Bean
-    public OpenAIChatModel agentChatModel() {
+    public RuntimeAgentModel agentChatModel() {
+        return new RuntimeAgentModel(this::buildChatModel);
+    }
+
+    private OpenAIChatModel buildChatModel() {
         // 必须在首个 AgentScope 模型客户端构造前挂上 transport，此处是引擎装配最早的时机；
         // dump 关闭时也要挂：调用类型头（X-Ragent-Call-Type）得在这里摘掉，不能发往上游
         AgentScopeDumpTransport.install(requestDumpProperties.isEnabled() ? requestDumpWriter : null);

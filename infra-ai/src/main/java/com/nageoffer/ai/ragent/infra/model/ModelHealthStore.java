@@ -38,6 +38,11 @@ public class ModelHealthStore {
 
     private final Map<String, ModelHealth> healthById = new ConcurrentHashMap<>();
 
+    private Map<String, ModelHealth> health() {
+        var snapshot = com.nageoffer.ai.ragent.framework.runtime.RuntimeConfigContext.current();
+        return snapshot == null ? healthById : snapshot.resource("model-health", ConcurrentHashMap::new);
+    }
+
     private final AtomicLong probeTokenSeq = new AtomicLong();
 
     /**
@@ -47,7 +52,7 @@ public class ModelHealthStore {
     }
 
     public boolean isUnavailable(String id) {
-        ModelHealth health = healthById.get(id);
+        ModelHealth health = health().get(id);
         if (health == null) {
             return false;
         }
@@ -66,7 +71,7 @@ public class ModelHealthStore {
         }
         long now = System.currentTimeMillis();
         AtomicReference<CallPermit> granted = new AtomicReference<>();
-        healthById.compute(id, (k, v) -> {
+        health().compute(id, (k, v) -> {
             if (v == null) {
                 v = new ModelHealth();
             }
@@ -99,7 +104,7 @@ public class ModelHealthStore {
         if (id == null) {
             return;
         }
-        healthById.compute(id, (k, v) -> {
+        health().compute(id, (k, v) -> {
             if (v == null) {
                 return new ModelHealth();
             }
@@ -116,7 +121,7 @@ public class ModelHealthStore {
             return;
         }
         long now = System.currentTimeMillis();
-        healthById.compute(id, (k, v) -> {
+        health().compute(id, (k, v) -> {
             if (v == null) {
                 v = new ModelHealth();
             }
@@ -144,7 +149,7 @@ public class ModelHealthStore {
         if (permit == null || permit.halfOpenToken() <= 0L) {
             return;
         }
-        healthById.computeIfPresent(permit.modelId(), (k, v) -> {
+        health().computeIfPresent(permit.modelId(), (k, v) -> {
             if (v.state == State.HALF_OPEN && v.halfOpenInFlight && v.halfOpenToken == permit.halfOpenToken()) {
                 v.halfOpenInFlight = false;
             }

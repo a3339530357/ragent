@@ -78,8 +78,10 @@ public class RAGSettingsController {
      * 获取系统引擎、后端选型、检索管线与 AI 模型等配置信息
      */
     @GetMapping("/rag/settings")
+    @com.nageoffer.ai.ragent.framework.runtime.RuntimeConfigBoundary
     public Result<SystemSettingsVO> settings() {
         SystemSettingsVO response = SystemSettingsVO.builder()
+                .runtimeConfigVersion(com.nageoffer.ai.ragent.framework.runtime.RuntimeConfigContext.current() == null ? 0L : com.nageoffer.ai.ragent.framework.runtime.RuntimeConfigContext.current().version())
                 .engine(SystemSettingsVO.EngineSettings.builder()
                         .type(orchestrationProperties.getMode().name().toLowerCase(Locale.ROOT))
                         .build())
@@ -277,10 +279,6 @@ public class RAGSettingsController {
         if (!StringUtils.hasText(apiKey)) {
             return null;
         }
-        String trimmed = apiKey.trim();
-        if (trimmed.length() <= 10) {
-            return "******";
-        }
-        return trimmed.substring(0, 6) + "***" + trimmed.substring(trimmed.length() - 4);
+        return "******";
     }
 }

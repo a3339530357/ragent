@@ -151,7 +151,7 @@ public class MultiChannelRetrievalEngine {
                 .map(channel -> withTimeout(CompletableFuture.supplyAsync(
                         () -> {
                             long startTime = System.currentTimeMillis();
-                            try {
+                            try (var ignored = com.nageoffer.ai.ragent.framework.runtime.RuntimeConfigContext.use(context.getConfigSnapshot())) {
                                 log.info("执行检索通道：{}", channel.getName());
                                 return channel.search(context);
                             } catch (Exception e) {

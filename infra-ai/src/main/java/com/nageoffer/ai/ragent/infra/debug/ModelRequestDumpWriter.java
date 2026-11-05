@@ -89,7 +89,10 @@ public class ModelRequestDumpWriter {
             record.addProperty("url", url);
             JsonObject headerJson = new JsonObject();
             if (headers != null) {
-                headers.forEach(headerJson::addProperty);
+                headers.forEach((name, value) -> headerJson.addProperty(name,
+                        name.equalsIgnoreCase("Authorization") || name.equalsIgnoreCase("Proxy-Authorization")
+                                || name.equalsIgnoreCase("x-api-key") || name.equalsIgnoreCase("api-key")
+                                || name.equalsIgnoreCase("Cookie") ? "[REDACTED]" : value));
             }
             record.add("headers", headerJson);
             record.add("body", parseJsonOrString(body));

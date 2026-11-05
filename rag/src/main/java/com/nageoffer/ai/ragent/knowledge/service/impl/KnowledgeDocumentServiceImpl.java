@@ -264,6 +264,7 @@ public class KnowledgeDocumentServiceImpl implements KnowledgeDocumentService {
     }
 
     @Override
+    @com.nageoffer.ai.ragent.framework.runtime.RuntimeConfigBoundary
     public void executeChunk(String docId) {
         KnowledgeDocumentDO documentDO = documentMapper.selectById(docId);
         if (documentDO == null) {

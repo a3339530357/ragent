@@ -117,7 +117,9 @@ public class BaiLianRerankClient implements RerankClient {
                 .build();
 
         JsonObject respJson;
-        try (Response response = httpClient.newCall(request).execute()) {
+        okhttp3.Call call = httpClient.newCall(request);
+        if (target.timeoutMs() != null) call.timeout().timeout(target.timeoutMs(), java.util.concurrent.TimeUnit.MILLISECONDS);
+        try (Response response = call.execute()) {
             if (!response.isSuccessful()) {
                 String body = HttpResponseHelper.readBody(response.body());
                 log.warn("{} rerank 请求失败: status={}, body={}", provider(), response.code(), body);

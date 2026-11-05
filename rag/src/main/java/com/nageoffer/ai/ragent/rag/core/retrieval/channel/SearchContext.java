@@ -40,6 +40,11 @@ public class SearchContext {
      */
     private String originalQuestion;
 
+    /** 子问题派发时固定配置，通道线程显式恢复。 */
+    @Builder.Default
+    private com.nageoffer.ai.ragent.framework.runtime.RuntimeConfigSnapshot configSnapshot =
+            com.nageoffer.ai.ragent.framework.runtime.RuntimeConfigContext.current();
+
     /**
      * 重写后的问题
      */

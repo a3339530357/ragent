@@ -1,6 +1,7 @@
 import { api } from "@/services/api";
 
 export interface SystemSettings {
+  runtimeConfigVersion?: number;
   engine: {
     type: string;
   };

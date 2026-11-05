@@ -73,7 +73,13 @@ public abstract class AbstractOpenAIStyleChatClient implements ChatClient {
      * 按档位超时预算派生的同步客户端缓存（key=timeoutMs）
      * 档位超时值仅少数几种，派生客户端经 newBuilder 复用连接池/线程池，缓存后避免每次调用重建
      */
-    private final Map<Long, OkHttpClient> syncClientByTimeout = new ConcurrentHashMap<>();
+    private final Map<Long, OkHttpClient> syncClientByTimeout = java.util.Collections.synchronizedMap(
+            new java.util.LinkedHashMap<>(16, 0.75f, true) {
+                @Override
+                protected boolean removeEldestEntry(Map.Entry<Long, OkHttpClient> eldest) {
+                    return size() > 16;
+                }
+            });
 
     // ==================== 子类钩子方法 ====================
 
