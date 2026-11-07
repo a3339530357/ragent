@@ -7,6 +7,7 @@ import { QuestionRail, type QuestionRailItem } from "@/components/chat/QuestionR
 import { WelcomeScreen } from "@/components/chat/WelcomeScreen";
 import { cn } from "@/lib/utils";
 import { useChatStore } from "@/stores/chatStore";
+import { useLayoutStore } from "@/stores/layoutStore";
 import type { Message } from "@/types";
 
 interface MessageListProps {
@@ -25,6 +26,9 @@ export function MessageList({ messages, isLoading, isStreaming, sessionKey }: Me
   const heightScrollRafRef = React.useRef<number | null>(null);
   const prevStreamingRef = React.useRef(false);
   const recommendReveal = useChatStore((state) => state.recommendReveal);
+  const wideMode = useLayoutStore((state) => state.wideMode);
+  // 当前可视区第一条的下标：切换宽屏后内容重排，用它把用户正在看的那条留在原处
+  const visibleStartRef = React.useRef(0);
   const initialTopMostItemIndex = React.useMemo(
     () => ({ index: "LAST" as const, align: "end" as const }),
     []
@@ -78,6 +82,7 @@ export function MessageList({ messages, isLoading, isStreaming, sessionKey }: Me
 
   const handleRangeChanged = React.useCallback(
     (range: { startIndex: number; endIndex: number }) => {
+      visibleStartRef.current = range.startIndex;
       setVisibleEnd(range.endIndex);
     },
     []
@@ -365,17 +370,50 @@ export function MessageList({ messages, isLoading, isStreaming, sessionKey }: Me
 
   const List = React.useMemo(() => {
     const Comp = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElement>>(
-      ({ className, ...props }, ref) => (
-        <div
-          ref={ref}
-          className={cn("mx-auto max-w-[840px] space-y-10 px-6 pt-10 pb-2 md:px-8", className)}
-          {...props}
-        />
-      )
+      ({ className, ...props }, ref) => {
+        // 在列表组件内部订阅宽屏状态：组件类型保持稳定，Virtuoso 不会因切换而整体重挂载
+        const wide = useLayoutStore((state) => state.wideMode);
+        return (
+          <div
+            ref={ref}
+            className={cn(
+              "mx-auto space-y-10 px-6 pt-10 pb-2 md:px-8",
+              // 宽屏时右侧多留空间，避免内容压到右侧的问题导航条
+              wide ? "max-w-[1280px] lg:pr-14" : "max-w-[840px]",
+              className
+            )}
+            {...props}
+          />
+        );
+      }
     );
     Comp.displayName = "MessageList";
     return Comp;
   }, []);
+
+  // 切换宽屏：行宽变化导致每条高度重算，原来的 scrollTop 会指向别的内容
+  // 在底部的继续贴底；翻在中间的把切换前看到的第一条重新对齐到顶部
+  const prevWideRef = React.useRef(wideMode);
+  React.useEffect(() => {
+    if (prevWideRef.current === wideMode) return;
+    prevWideRef.current = wideMode;
+    const atBottom = followRef.current && !detached;
+    const anchor = visibleStartRef.current;
+    let raf2 = 0;
+    const raf1 = window.requestAnimationFrame(() => {
+      raf2 = window.requestAnimationFrame(() => {
+        if (atBottom) {
+          scrollToBottom();
+        } else {
+          virtuosoRef.current?.scrollToIndex({ index: anchor, align: "start", behavior: "auto" });
+        }
+      });
+    });
+    return () => {
+      window.cancelAnimationFrame(raf1);
+      window.cancelAnimationFrame(raf2);
+    };
+  }, [wideMode, detached, scrollToBottom]);
 
   const Footer = React.useMemo(() => {
     const Comp = () => <div aria-hidden="true" className="h-8" />;

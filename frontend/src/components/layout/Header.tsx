@@ -1,9 +1,11 @@
 import * as React from "react";
-import { Github, Menu } from "lucide-react";
+import { FoldHorizontal, Github, Menu, UnfoldHorizontal } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { useGitHubStars } from "@/hooks/useGitHubStars";
+import { cn } from "@/lib/utils";
 import { useChatStore } from "@/stores/chatStore";
+import { useLayoutStore } from "@/stores/layoutStore";
 
 interface HeaderProps {
   onToggleSidebar: () => void;
@@ -11,6 +13,7 @@ interface HeaderProps {
 
 export function Header({ onToggleSidebar }: HeaderProps) {
   const { currentSessionId, sessions } = useChatStore();
+  const { wideMode, toggleWideMode } = useLayoutStore();
   const starCount = useGitHubStars();
   const currentSession = React.useMemo(
     () => sessions.find((session) => session.id === currentSessionId),
@@ -43,6 +46,26 @@ export function Header({ onToggleSidebar }: HeaderProps) {
           </p>
         </div>
         <div className="flex items-center gap-2">
+          {/* 小屏下内容本来就占满，宽屏开关没有意义，只在 lg 以上显示 */}
+          <button
+            type="button"
+            onClick={toggleWideMode}
+            aria-pressed={wideMode}
+            title={wideMode ? "切回标准宽度" : "切换到宽屏模式"}
+            className={cn(
+              "hidden items-center gap-1.5 rounded-xl border px-3 py-1.5 text-sm transition-colors active:scale-95 lg:inline-flex",
+              wideMode
+                ? "border-[#BFDBFE] bg-[#EFF6FF] text-[#2563EB] hover:bg-[#DBEAFE]"
+                : "border-gray-200 text-gray-600 hover:bg-gray-100 hover:text-gray-900"
+            )}
+          >
+            {wideMode ? (
+              <FoldHorizontal className="h-4 w-4" />
+            ) : (
+              <UnfoldHorizontal className="h-4 w-4" />
+            )}
+            <span className="font-medium">宽屏</span>
+          </button>
           <a
             href="https://github.com/nageoffer/ragent"
             target="_blank"

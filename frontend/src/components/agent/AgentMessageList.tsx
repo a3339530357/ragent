@@ -6,6 +6,7 @@ import { AgentTurnItem } from "@/components/agent/AgentTurn";
 import { AgentWelcomeScreen } from "@/components/agent/AgentWelcomeScreen";
 import { cn } from "@/lib/utils";
 import type { AgentMessage, AgentTurn } from "@/types/agent";
+import { useLayoutStore } from "@/stores/layoutStore";
 
 // 距底部小于该值视为「贴底」，流式输出只对贴底用户自动跟随
 const NEAR_BOTTOM_PX = 80;
@@ -52,6 +53,12 @@ export function AgentMessageList({
   // 贴底跟随：用户往上翻历史时流式输出不再强制拖回底部
   const autoFollowRef = React.useRef(true);
   const [showJumpButton, setShowJumpButton] = React.useState(false);
+  const wideMode = useLayoutStore((state) => state.wideMode);
+  // 可视区第一轮的下标：切换宽屏后内容重排，用它把用户正在看的那一轮留在原处
+  const visibleStartRef = React.useRef(0);
+  const handleRangeChanged = React.useCallback((range: { startIndex: number }) => {
+    visibleStartRef.current = range.startIndex;
+  }, []);
   const handleScrollTrack = React.useCallback(() => {
     const scroller = scrollerRef.current;
     if (!scroller) return;
@@ -258,6 +265,30 @@ export function AgentMessageList({
     return Comp;
   }, []);
 
+  // 切换宽屏：行宽变化导致每轮高度重算，原 scrollTop 会指向别的内容
+  // 在底部的继续贴底；翻在中间的把切换前看到的第一轮重新对齐到顶部
+  const prevWideRef = React.useRef(wideMode);
+  React.useEffect(() => {
+    if (prevWideRef.current === wideMode) return;
+    prevWideRef.current = wideMode;
+    const atBottom = autoFollowRef.current;
+    const anchor = visibleStartRef.current;
+    let raf2 = 0;
+    const raf1 = window.requestAnimationFrame(() => {
+      raf2 = window.requestAnimationFrame(() => {
+        if (atBottom) {
+          scrollToBottom();
+        } else {
+          virtuosoRef.current?.scrollToIndex({ index: anchor, align: "start", behavior: "auto" });
+        }
+      });
+    });
+    return () => {
+      window.cancelAnimationFrame(raf1);
+      window.cancelAnimationFrame(raf2);
+    };
+  }, [wideMode, scrollToBottom]);
+
   if (messages.length === 0) {
     if (isLoading) {
       return <div className="agent-stream h-full" />;
@@ -289,6 +320,7 @@ export function AgentMessageList({
         }
       }}
       totalListHeightChanged={handleTotalListHeightChanged}
+      rangeChanged={handleRangeChanged}
       className="agent-stream h-full"
       components={{ Header, List, Footer }}
       itemContent={(_index, turn) => (

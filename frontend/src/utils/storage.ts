@@ -3,6 +3,7 @@ import type { User } from "@/types";
 const TOKEN_KEY = "ragent_token";
 const USER_KEY = "ragent_user";
 const THEME_KEY = "ragent_theme";
+const CHAT_WIDE_KEY = "ragent_chat_wide";
 
 function safeGet(key: string) {
   try {
@@ -62,5 +63,11 @@ export const storage = {
   },
   setTheme(theme: string) {
     safeSet(THEME_KEY, theme);
+  },
+  getChatWide(): boolean {
+    return safeGet(CHAT_WIDE_KEY) === "1";
+  },
+  setChatWide(wide: boolean) {
+    safeSet(CHAT_WIDE_KEY, wide ? "1" : "0");
   }
 };

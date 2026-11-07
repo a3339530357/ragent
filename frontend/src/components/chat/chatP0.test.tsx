@@ -7,6 +7,7 @@ import { ThinkingIndicator } from "@/components/chat/ThinkingIndicator";
 import { createStreamResponse } from "@/hooks/useStreamResponse";
 import { stopTask } from "@/services/chatService";
 import { describeStreamError, useChatStore } from "@/stores/chatStore";
+import { useLayoutStore } from "@/stores/layoutStore";
 import type { Message } from "@/types";
 
 vi.mock("sonner", () => ({ toast: { success: vi.fn(), error: vi.fn() } }));
@@ -251,5 +252,18 @@ describe("思考区收放", () => {
       fireEvent.click(header());
     });
     expect(header().getAttribute("aria-expanded")).toBe("true");
+  });
+});
+
+describe("宽屏模式", () => {
+  it("切换后写入本地存储，刷新后仍保持", () => {
+    window.localStorage.removeItem("ragent_chat_wide");
+    useLayoutStore.setState({ wideMode: false });
+    useLayoutStore.getState().toggleWideMode();
+    expect(useLayoutStore.getState().wideMode).toBe(true);
+    expect(window.localStorage.getItem("ragent_chat_wide")).toBe("1");
+    useLayoutStore.getState().toggleWideMode();
+    expect(useLayoutStore.getState().wideMode).toBe(false);
+    expect(window.localStorage.getItem("ragent_chat_wide")).toBe("0");
   });
 });

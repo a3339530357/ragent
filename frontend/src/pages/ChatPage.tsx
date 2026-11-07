@@ -5,7 +5,9 @@ import { ChatInput } from "@/components/chat/ChatInput";
 import { MessageList } from "@/components/chat/MessageList";
 import { SourcesPanel } from "@/components/chat/SourcesPanel";
 import { MainLayout } from "@/components/layout/MainLayout";
+import { cn } from "@/lib/utils";
 import { useChatStore } from "@/stores/chatStore";
+import { useLayoutStore } from "@/stores/layoutStore";
 
 export function ChatPage() {
   const navigate = useNavigate();
@@ -21,6 +23,7 @@ export function ChatPage() {
     selectSession,
     createSession
   } = useChatStore();
+  const wideMode = useLayoutStore((state) => state.wideMode);
   const showWelcome = messages.length === 0 && !isLoading;
   const [sessionsReady, setSessionsReady] = React.useState(false);
   const sessionExists = React.useMemo(() => {
@@ -93,7 +96,12 @@ export function ChatPage() {
           </div>
           {showWelcome ? null : (
             <div className="relative z-20 bg-white">
-              <div className="mx-auto max-w-[840px] px-6 pt-1 pb-4">
+              <div
+                className={cn(
+                  "mx-auto px-6 pt-1 pb-4",
+                  wideMode ? "max-w-[1280px] md:px-8 lg:pr-14" : "max-w-[840px]"
+                )}
+              >
                 <ChatInput />
               </div>
             </div>

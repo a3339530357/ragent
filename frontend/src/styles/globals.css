@@ -5499,6 +5499,25 @@ textarea {
   }
 }
 
+/* ── 宽屏模式（页头「宽屏」开关）──────────────
+   标准列宽 880 读长文最舒服；宽屏给表格、代码块、长链路的工具结果让出横向空间
+   轮次卡、输入框、脚注三者同步放宽，保持同一列的对齐 */
+.agent-app[data-wide="true"] .agent-stream-rows {
+  max-width: 1344px; /* 1280 内容 + 两侧 32 留白 */
+}
+
+.agent-app[data-wide="true"] .agent-composer-box,
+.agent-app[data-wide="true"] .agent-composer-note {
+  max-width: 1280px;
+}
+
+/* 窄于 1024 时列本来就占满 开关没有意义 */
+@media (max-width: 1023px) {
+  .agent-app .agent-head-btn[data-wide-toggle] {
+    display: none;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .agent-app .agent-turn,
   .agent-app .agent-row,

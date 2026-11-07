@@ -273,6 +273,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
   setDeepThinkingEnabled: (enabled) => {
     set({ deepThinkingEnabled: enabled });
   },
+
   sendMessage: async (content) => {
     const trimmed = content.trim();
     if (!trimmed) return;

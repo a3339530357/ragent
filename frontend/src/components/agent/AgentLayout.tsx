@@ -1,10 +1,11 @@
 import * as React from "react";
-import { Github } from "lucide-react";
+import { FoldHorizontal, Github, UnfoldHorizontal } from "lucide-react";
 
 import { AgentRawLog } from "@/components/agent/AgentRawLog";
 import { AgentSidebar } from "@/components/agent/AgentSidebar";
 import { useGitHubStars } from "@/hooks/useGitHubStars";
 import { getAgentMeta } from "@/services/agentService";
+import { useLayoutStore } from "@/stores/layoutStore";
 import type { AgentEngineMeta } from "@/types/agent";
 
 export type AgentMetaState =
@@ -43,6 +44,8 @@ interface AgentHeaderProps {
 
 function AgentHeader({ meta, rawOpen, onToggleRaw }: AgentHeaderProps) {
   const starCount = useGitHubStars();
+  const wideMode = useLayoutStore((state) => state.wideMode);
+  const toggleWideMode = useLayoutStore((state) => state.toggleWideMode);
 
   const starLabel = starCount === null ? null : starCount.toLocaleString("en-US");
 
@@ -73,6 +76,22 @@ function AgentHeader({ meta, rawOpen, onToggleRaw }: AgentHeaderProps) {
       </div>
 
       <div className="agent-header-right">
+        <button
+          type="button"
+          className="agent-head-btn"
+          data-on={wideMode}
+          data-wide-toggle="true"
+          onClick={toggleWideMode}
+          aria-pressed={wideMode}
+          title={wideMode ? "切回标准宽度" : "切换到宽屏模式"}
+        >
+          {wideMode ? (
+            <FoldHorizontal className="h-3.5 w-3.5" strokeWidth={1.5} />
+          ) : (
+            <UnfoldHorizontal className="h-3.5 w-3.5" strokeWidth={1.5} />
+          )}
+          宽屏
+        </button>
         <a
           href="https://github.com/nageoffer/ragent"
           target="_blank"
@@ -105,9 +124,10 @@ interface AgentLayoutProps {
 export function AgentLayout({ children }: AgentLayoutProps) {
   const [rawOpen, setRawOpen] = React.useState(false);
   const meta = useAgentMeta();
+  const wideMode = useLayoutStore((state) => state.wideMode);
 
   return (
-    <div className="agent-app">
+    <div className="agent-app" data-wide={wideMode}>
       <AgentHeader meta={meta} rawOpen={rawOpen} onToggleRaw={() => setRawOpen((v) => !v)} />
       <div className="agent-body">
         <AgentSidebar />
